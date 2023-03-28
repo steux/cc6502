@@ -1,0 +1,20 @@
+[package]
+name = "cc6502"
+version = "0.1.0"
+edition = "2021"
+authors = ["Bruno STEUX <bruno.steux@gmail.com>"]
+license = "GPL-3.0-or-later"
+description = "a library for making C compilers for the 6502 8-bits processor"
+readme = "README.md"
+homepage = "https://github.com/steux/cc6502"
+repository = "https://github.com/steux/cc6502"
+keywords = ["cli", "6502", "compiler", "gamedev"]
+categories = ["command-line-utilities", "game-development", "compilers"]
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+env_logger = "0.9"
+log = "0.4"
+pest = "2.5"
+pest_derive = "2.5"
+regex = "1.7"
