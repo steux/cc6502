@@ -31,7 +31,7 @@ extern crate pest_derive;
 use clap::Parser as ClapParser;
 
 #[derive(ClapParser, Debug)]
-#[command(author, version, about = "A subset of C compiler for the 6502 processor", long_about = "A subset of C compiler for the 6502 processor\nCopyright (C) 2023 Bruno STEUX\n\nThis program comes with ABSOLUTELY NO WARRANTY;\nThis is free software, and you are welcome to redistribute it\nunder certain conditions;")]
+#[command(author, about = "A subset of C compiler for the 6502 processor", long_about = "A subset of C compiler for the 6502 processor\nCopyright (C) 2023 Bruno STEUX\n\nThis program comes with ABSOLUTELY NO WARRANTY;\nThis is free software, and you are welcome to redistribute it\nunder certain conditions;")]
 pub struct Args {
     /// Input file name
     pub input: String,

@@ -30,7 +30,7 @@ use crate::cpp;
 use crate::Args;
 
 #[derive(Parser)]
-#[grammar = "cc2600.pest"]
+#[grammar = "cc6502.pest"]
 struct Cc2600Parser;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
