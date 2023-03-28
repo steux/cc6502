@@ -153,7 +153,7 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             ExprType::A(s) => {
                 if mnemonic == LDA { return Ok(*s); }
-                return Err(syntax_error(self.compiler_state, "Unexpected expression type", pos));           
+                return Err(self.compiler_state.syntax_error("Unexpected expression type", pos));           
             },
             ExprType::Absolute(variable, eight_bits, off) => {
                 let v = self.compiler_state.get_variable(variable);
@@ -235,7 +235,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     } else if *eight_bits && !v.var_const {
                         // This is indirect addressing, but in a mode not possible by 6502
                         // (constant offset)
-                        return Err(syntax_error(self.compiler_state, "Indirect adressing mode is only available with Y (use Y as array index)", pos));
+                        return Err(self.compiler_state.syntax_error("Indirect adressing mode is only available with Y (use Y as array index)", pos));
                     } else {
                         let off = if high_byte { offset + 1 } else { offset };
                         if off != 0 {
@@ -319,9 +319,9 @@ impl<'a, 'b> GeneratorState<'a> {
                     }
                     match mnemonic {
                         STA => cycles += 1,
-                        STY | LDY | CPY => return Err(syntax_error(self.compiler_state, "Can't use Y addressing on Y operation", pos)),
-                        CPX => return Err(syntax_error(self.compiler_state, "Can't use Y addressing on compare with X operation", pos)),
-                        STX => if v.memory != VariableMemory::Zeropage { return Err(syntax_error(self.compiler_state, "Can't use Y addressing on a non zeropage variable with X storage", pos)) }, 
+                        STY | LDY | CPY => return Err(self.compiler_state.syntax_error("Can't use Y addressing on Y operation", pos)),
+                        CPX => return Err(self.compiler_state.syntax_error("Can't use Y addressing on compare with X operation", pos)),
+                        STX => if v.memory != VariableMemory::Zeropage { return Err(self.compiler_state.syntax_error("Can't use Y addressing on a non zeropage variable with X storage", pos)) }, 
                         _ => () 
                     }
                 } else if high_byte {
@@ -335,17 +335,17 @@ impl<'a, 'b> GeneratorState<'a> {
                             dasm_operand = format!("({}),Y", variable);
                         }
                         if v.memory != VariableMemory::Zeropage {
-                            return Err(syntax_error(self.compiler_state, "Y indirect addressing works only on zeropage variables", pos))
+                            return Err(self.compiler_state.syntax_error("Y indirect addressing works only on zeropage variables", pos))
                         }
                         nb_bytes = 2;
                         cycles = if mnemonic == STA {6} else {5};
                         indirect = true;
                         match mnemonic {
-                            STX | STY | LDX | LDY | CPX | CPY => return Err(syntax_error(self.compiler_state, "Can't use Y indirect addressing on X or Y operation", pos)),
+                            STX | STY | LDX | LDY | CPX | CPY => return Err(self.compiler_state.syntax_error("Can't use Y indirect addressing on X or Y operation", pos)),
                             _ => () 
                         }
                     } else {
-                        return Err(syntax_error(self.compiler_state, "X-Indirect adressing mode not available with Y register", pos));
+                        return Err(self.compiler_state.syntax_error("X-Indirect adressing mode not available with Y register", pos));
                     }
                 } else {
                     if offset > 0 {
@@ -368,9 +368,9 @@ impl<'a, 'b> GeneratorState<'a> {
                     }
                     match mnemonic {
                         STA => cycles += 1,
-                        STY | LDY | CPY => return Err(syntax_error(self.compiler_state, "Can't use Y addressing on Y operation", pos)),
-                        CPX => return Err(syntax_error(self.compiler_state, "Can't use Y addressing on compare with X operation", pos)),
-                        STX => if v.memory != VariableMemory::Zeropage { return Err(syntax_error(self.compiler_state, "Can't use Y addressing on a non zeropage variable with X storage", pos)) }, 
+                        STY | LDY | CPY => return Err(self.compiler_state.syntax_error("Can't use Y addressing on Y operation", pos)),
+                        CPX => return Err(self.compiler_state.syntax_error("Can't use Y addressing on compare with X operation", pos)),
+                        STX => if v.memory != VariableMemory::Zeropage { return Err(self.compiler_state.syntax_error("Can't use Y addressing on a non zeropage variable with X storage", pos)) }, 
                         _ => () 
                     }
                 }
@@ -398,7 +398,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     } else { 0 }
                 } else { 0 };
                 if v.var_type == VariableType::CharPtr && !v.var_const && v.size == 1 {
-                    return Err(syntax_error(self.compiler_state, "Y-Indirect adressing mode not available with X register", pos));
+                    return Err(self.compiler_state.syntax_error("Y-Indirect adressing mode not available with X register", pos));
                 }
                 let off = if v.var_type == VariableType::CharPtrPtr || v.var_type == VariableType::ShortPtr {
                     offset + if high_byte { v.size } else { 0 }
@@ -420,9 +420,9 @@ impl<'a, 'b> GeneratorState<'a> {
                         nb_bytes = 3;
                     }
                     match mnemonic {
-                        STX | LDX | CPX => return Err(syntax_error(self.compiler_state, "Can't use X addressing on X operation", pos)),
-                        CPY => return Err(syntax_error(self.compiler_state, "Can't use X addressing on compare with Y operation", pos)),
-                        STY => if v.memory != VariableMemory::Zeropage { return Err(syntax_error(self.compiler_state, "Can't use X addressing on a non zeropage variable with Y storage", pos)) }, 
+                        STX | LDX | CPX => return Err(self.compiler_state.syntax_error("Can't use X addressing on X operation", pos)),
+                        CPY => return Err(self.compiler_state.syntax_error("Can't use X addressing on compare with Y operation", pos)),
+                        STY => if v.memory != VariableMemory::Zeropage { return Err(self.compiler_state.syntax_error("Can't use X addressing on a non zeropage variable with Y storage", pos)) }, 
                         _ => () 
                     }
                 }
@@ -576,7 +576,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(syntax_error(self.compiler_state, "Can't assign 16 bits data to X", pos));
+                            return Err(self.compiler_state.syntax_error("Can't assign 16 bits data to X", pos));
                         }
                         self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X;
@@ -652,7 +652,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(syntax_error(self.compiler_state, "Can't assign 16 bits data to Y", pos));
+                            return Err(self.compiler_state.syntax_error("Can't assign 16 bits data to Y", pos));
                         }
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y;
@@ -750,13 +750,13 @@ impl<'a, 'b> GeneratorState<'a> {
                             },
                             ExprType::A(_) => {
                                 if self.acc_in_use {
-                                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.sasm(TXA)?;
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
                             },
-                            _ => Err(syntax_error(self.compiler_state, "Bad left value in assignement", pos)),
+                            _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
                         }
                     },
                     ExprType::Y => {
@@ -811,13 +811,13 @@ impl<'a, 'b> GeneratorState<'a> {
                             },
                             ExprType::A(_) => {
                                 if self.acc_in_use {
-                                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.sasm(TYA)?;
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
                             },
-                            _ => Err(syntax_error(self.compiler_state, "Bad left value in assignement", pos)),
+                            _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
                         }
                     },
                     _ => {
@@ -842,19 +842,19 @@ impl<'a, 'b> GeneratorState<'a> {
                             },
                             ExprType::A(_) => {
                                 if acc_in_use {
-                                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(signed));
                             },
                             ExprType::Tmp(_) => {
                                 if self.tmp_in_use {
-                                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.tmp_in_use = true;
                                 return Ok(ExprType::Tmp(signed));
                             },
-                            _ => return Err(syntax_error(self.compiler_state, "Bad left value in assignement", pos)),
+                            _ => return Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
                         };
                         if acc_in_use {
                             self.sasm(PLA)?;
@@ -894,7 +894,7 @@ impl<'a, 'b> GeneratorState<'a> {
         let right2 = match right {
             ExprType::A(s) => {
                 if self.tmp_in_use {
-                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                 }
                 self.asm(STA, &ExprType::Tmp(*s), pos, false)?;
                 acc_in_use = false;
@@ -992,8 +992,8 @@ impl<'a, 'b> GeneratorState<'a> {
             Operation::Xor(_) => {
                 EOR
             },
-            Operation::Mul(_) => { return Err(syntax_error(self.compiler_state, "Operation not possible. 6502 doesn't implement a multiplier.", pos)) },
-            Operation::Div(_) => { return Err(syntax_error(self.compiler_state, "Operation not possible. 6502 doesn't implement a divider.", pos)) },
+            Operation::Mul(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a multiplier.", pos)) },
+            Operation::Div(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a divider.", pos)) },
             _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
         };
         let signed;
@@ -1007,7 +1007,7 @@ impl<'a, 'b> GeneratorState<'a> {
             ExprType::X => {
                 signed = false;
                 if self.tmp_in_use {
-                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                 }
                 self.asm(STX, &ExprType::Tmp(false), pos, high_byte)?;
                 self.asm(operation, &ExprType::Tmp(false), pos, high_byte)?;
@@ -1015,7 +1015,7 @@ impl<'a, 'b> GeneratorState<'a> {
             ExprType::Y => {
                 signed = false;
                 if self.tmp_in_use {
-                    return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                 }
                 self.asm(STY, &ExprType::Tmp(false), pos, high_byte)?;
                 self.asm(operation, &ExprType::Tmp(false), pos, high_byte)?;
@@ -1032,7 +1032,7 @@ impl<'a, 'b> GeneratorState<'a> {
             self.asm(STA, &ExprType::Tmp(false), pos, high_byte)?;
             self.sasm(PLA)?;
             if self.tmp_in_use {
-                return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
             }
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(signed))
@@ -1055,7 +1055,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             _ => unreachable!(),
                         } 
                     },
-                    _ => return Err(syntax_error(self.compiler_state, "Incorrect right value for shift operation (constants only)", pos))
+                    _ => return Err(self.compiler_state.syntax_error("Incorrect right value for shift operation (constants only)", pos))
                 };
             },
             ExprType::Absolute(varname, eight_bits, offset) => {
@@ -1073,7 +1073,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
                                         self.sasm(PLA)?;
                                         if self.tmp_in_use {
-                                            return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                         }
                                         self.tmp_in_use = true;
                                         return Ok(ExprType::Tmp(signed));
@@ -1084,10 +1084,10 @@ impl<'a, 'b> GeneratorState<'a> {
                                     return Ok(ExprType::Absolute(varname, true, offset + v.size as i32));
                                 }
                             } else {
-                                return Err(syntax_error(self.compiler_state, "Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
+                                return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
                             } 
                         },
-                        _ => return Err(syntax_error(self.compiler_state, "Incorrect right value for right shift operation on short (constant 8 only supported)", pos))
+                        _ => return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos))
                     };
                 } else {
                     if let ExprType::Immediate(value) = right {
@@ -1100,7 +1100,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
                                     self.sasm(PLA)?;
                                     if self.tmp_in_use {
-                                        return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                        return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
@@ -1130,7 +1130,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
                                     self.sasm(PLA)?;
                                     if self.tmp_in_use {
-                                        return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                        return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
@@ -1138,10 +1138,10 @@ impl<'a, 'b> GeneratorState<'a> {
                                     return Ok(ExprType::A(signed));
                                 }
                             } else {
-                                return Err(syntax_error(self.compiler_state, "Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
+                                return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
                             } 
                         },
-                        _ => return Err(syntax_error(self.compiler_state, "Incorrect right value for right shift operation on short (constant 8 only supported)", pos))
+                        _ => return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos))
                     };
                 } else {
                     if let ExprType::Immediate(value) = right {
@@ -1154,7 +1154,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
                                     self.sasm(PLA)?;
                                     if self.tmp_in_use {
-                                        return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                                        return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
@@ -1190,7 +1190,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.tmp_in_use = false;
                 self.asm(LDA, left, pos, false)?;
             },
-            _ => return Err(syntax_error(self.compiler_state, "Bad left value for shift operation", pos))
+            _ => return Err(self.compiler_state.syntax_error("Bad left value for shift operation", pos))
         }
         self.acc_in_use = true;
         let operation = match op {
@@ -1224,17 +1224,17 @@ impl<'a, 'b> GeneratorState<'a> {
                         }
                     }
                 } else {
-                    return Err(syntax_error(self.compiler_state, "Negative shift operation not allowed", pos));
+                    return Err(self.compiler_state.syntax_error("Negative shift operation not allowed", pos));
                 } 
             },
-            _ => return Err(syntax_error(self.compiler_state, "Incorrect right value for shift operation (positive constants only)", pos))
+            _ => return Err(self.compiler_state.syntax_error("Incorrect right value for shift operation (positive constants only)", pos))
         };
         self.flags = FlagsState::Unknown;
         if acc_in_use {
             self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
             self.sasm(PLA)?;
             if self.tmp_in_use {
-                return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
             }
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(signed))
@@ -1251,7 +1251,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     if self.acc_in_use {
                         self.sasm(PHA)?; 
                         if self.tmp_in_use {
-                            return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                         }
                         self.local_label_counter_if += 1;
                         let ifend_label = format!(".ifend{}", self.local_label_counter_if);
@@ -1269,7 +1269,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.tmp_in_use = true;
                         self.sasm(PLA)?;
                         if la != ra {
-                            return Err(syntax_error(self.compiler_state, "Different alternative types in ?: expression", pos))
+                            return Err(self.compiler_state.syntax_error("Different alternative types in ?: expression", pos))
                         }
                         Ok(ExprType::Tmp(false))
                     } else {
@@ -1287,15 +1287,15 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.label(&ifend_label)?;
                         self.acc_in_use = true;
                         if la != ra {
-                            return Err(syntax_error(self.compiler_state, "Different alternative types in ?: expression", pos))
+                            return Err(self.compiler_state.syntax_error("Different alternative types in ?: expression", pos))
                         }
                         Ok(la)
                     }
                 } else {
-                    Err(syntax_error(self.compiler_state, "Missing alternatives in ?: expression", pos))
+                    Err(self.compiler_state.syntax_error("Missing alternatives in ?: expression", pos))
                 }
             },
-            _ => Err(syntax_error(self.compiler_state, "Missing alternatives in ?: expression", pos))
+            _ => Err(self.compiler_state.syntax_error("Missing alternatives in ?: expression", pos))
         }
     }
 
@@ -1306,7 +1306,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 match sub.as_ref() {
                     Expr::Nothing => {
                         match self.compiler_state.functions.get(*var) {
-                            None => Err(syntax_error(self.compiler_state, "Unknown function identifier", pos)),
+                            None => Err(self.compiler_state.syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
                                 let acc_in_use = self.acc_in_use;
                                 if acc_in_use { self.sasm(PHA)?; }
@@ -1314,7 +1314,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     if f.code.is_some() {
                                         self.push_code(var)?;
                                     } else {
-                                        return Err(syntax_error(self.compiler_state, "Undefined function", pos));
+                                        return Err(self.compiler_state.syntax_error("Undefined function", pos));
                                     }
                                 } else if f.bank == self.current_bank || self.bankswitching_scheme == "3EP" {
                                     self.asm(JSR, &ExprType::Label(var), pos, false)?;
@@ -1325,13 +1325,13 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.asm(STA, &ExprType::Absolute("ROM_SELECT", true, 0), pos, false)?;
                                         self.asm(JSR, &ExprType::Label(var), pos, false)?;
                                     } else {
-                                        return Err(syntax_error(self.compiler_state, "Banked code can only be called from bank 0 or same bank", pos))
+                                        return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                     }
                                 } else if self.current_bank == 0 {
                                     // Generate bankswitching call
                                     self.asm(JSR, &ExprType::Label(&format!("Call{}", *var)), pos, false)?;
                                 } else {
-                                    return Err(syntax_error(self.compiler_state, "Banked code can only be called from bank 0 or same bank", pos))
+                                    return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                 }
                                 if acc_in_use { self.sasm(PLA)?; }
                                 self.flags = FlagsState::Unknown;
@@ -1339,10 +1339,10 @@ impl<'a, 'b> GeneratorState<'a> {
                             }
                         }
                     },
-                    _ => Err(syntax_error(self.compiler_state, "No subscript allowed here", pos))
+                    _ => Err(self.compiler_state.syntax_error("No subscript allowed here", pos))
                 }
             },
-            _ => Err(syntax_error(self.compiler_state, "Function call on something else than a function", pos))
+            _ => Err(self.compiler_state.syntax_error("Function call on something else than a function", pos))
         }
     }
 
@@ -1403,9 +1403,9 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             _ => {
                 if plusplus {
-                    Err(syntax_error(self.compiler_state, "Bad left value used with ++ operator", pos))
+                    Err(self.compiler_state.syntax_error("Bad left value used with ++ operator", pos))
                 } else {
-                    Err(syntax_error(self.compiler_state, "Bad left value used with -- operator", pos))
+                    Err(self.compiler_state.syntax_error("Bad left value used with -- operator", pos))
                 }
             },
         }
@@ -1428,7 +1428,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         if self.acc_in_use {
             self.sasm(PHA)?; 
             if self.tmp_in_use {
-                return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
             }
             self.local_label_counter_if += 1;
             let ifend_label = format!(".ifend{}", self.local_label_counter_if);
@@ -1469,7 +1469,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             _ => {
                 if self.acc_in_use {
                     if self.tmp_in_use {
-                        return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                        return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                     }
                     self.sasm(PHA)?; 
                     self.local_label_counter_if += 1;
@@ -1524,13 +1524,13 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                         ExprType::Nothing => {
                             Ok(ExprType::Absolute(var, true, 0))
                         },
-                        _ => Err(syntax_error(self.compiler_state, "No subscript is allowed in this context", pos))
+                        _ => Err(self.compiler_state.syntax_error("No subscript is allowed in this context", pos))
                     }
                 } else {
-                    Err(syntax_error(self.compiler_state, "Deref on something else than a pointer", pos))
+                    Err(self.compiler_state.syntax_error("Deref on something else than a pointer", pos))
                 }
             },
-            _ => Err(syntax_error(self.compiler_state, "Deref only works on pointers", pos)),
+            _ => Err(self.compiler_state.syntax_error("Deref only works on pointers", pos)),
         }
     }
 
@@ -1549,10 +1549,10 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                 } else if v.var_type == VariableType::Short {
                     Ok(ExprType::Immediate(2))
                 } else {
-                    Err(syntax_error(self.compiler_state, "Sizeof only works on variables", pos))
+                    Err(self.compiler_state.syntax_error("Sizeof only works on variables", pos))
                 }
             },
-            _ => Err(syntax_error(self.compiler_state, "Sizeof only works on variables", pos)),
+            _ => Err(self.compiler_state.syntax_error("Sizeof only works on variables", pos)),
         }
     }
 
@@ -1662,7 +1662,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                                     Ok(ExprType::AbsoluteX(variable))
                                 }
                             } else {
-                                Err(syntax_error(self.compiler_state, "Subscript not allowed on variables", pos))
+                                Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
                             ExprType::Y => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
@@ -1671,7 +1671,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                                     Ok(ExprType::AbsoluteY(variable))
                                 }
                             } else {
-                                Err(syntax_error(self.compiler_state, "Subscript not allowed on variables", pos))
+                                Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
                             ExprType::Immediate(val) => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
@@ -1680,9 +1680,9 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                                     Ok(ExprType::Absolute(variable, v.var_type != VariableType::CharPtrPtr && v.var_type != VariableType::ShortPtr, val))
                                 }
                             } else {
-                                Err(syntax_error(self.compiler_state, "Subscript not allowed on variables", pos))
+                                Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
-                            _ => Err(syntax_error(self.compiler_state, "Subscript not allowed (only X, Y and constants are allowed)", pos))
+                            _ => Err(self.compiler_state.syntax_error("Subscript not allowed (only X, Y and constants are allowed)", pos))
                         }
                     },
                 }
@@ -1749,7 +1749,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             self.asm(STA, &ExprType::Tmp(false), pos, false)?;
             self.sasm(PLA)?;
             if self.tmp_in_use {
-                return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
             }
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(true))
@@ -1892,7 +1892,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             ExprType::Absolute(_, eight_bits, _) => {
                 if self.acc_in_use { self.sasm(PHA)?; }
                 if !eight_bits {
-                    return Err(syntax_error(self.compiler_state, "Comparision is not implemented on 16 bits data", pos));
+                    return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                 }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
@@ -1923,14 +1923,14 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(syntax_error(self.compiler_state, "Comparision is not implemented on 16 bits data", pos));
+                            return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                         }
                         self.asm(CPY, right, pos, false)?;
                         cmp = false;
                     },
                     ExprType::A(s) => {
                         if self.tmp_in_use {
-                            return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                         }
                         self.asm(STA, &ExprType::Tmp(*s), pos, false)?;
                         self.asm(CPY, &ExprType::Tmp(*s), pos, false)?;
@@ -1954,14 +1954,14 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(syntax_error(self.compiler_state, "Comparision is not implemented on 16 bits data", pos));
+                            return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                         }
                         self.asm(CPX, right, pos, false)?;
                         cmp = false;
                     },
                     ExprType::A(s) => {
                         if self.tmp_in_use {
-                            return Err(syntax_error(self.compiler_state, "Code too complex for the compiler", pos))
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                         }
                         self.asm(STA, &ExprType::Tmp(*s), pos, false)?;
                         self.asm(CPX, &ExprType::Tmp(*s), pos, false)?;
@@ -1986,7 +1986,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                 },
                 ExprType::Absolute(_, eight_bits, _) => {
                     if !eight_bits {
-                        return Err(syntax_error(self.compiler_state, "Comparision is not implemented on 16 bits data", pos));
+                        return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                     }
                     self.asm(CMP, right, pos, false)?;
                 },
@@ -2081,7 +2081,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                 ExprType::Absolute(_, eight_bits, _) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     if !eight_bits {
-                        return Err(syntax_error(self.compiler_state, "Comparision is not implemented on 16 bits data", pos));
+                        return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                     }
                     self.asm(LDA, &expr, pos, false)?;
                 },
@@ -2145,7 +2145,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                     Statement::Break => {
                         let brk_label = {
                             match self.loops.last() {
-                                None => return Err(syntax_error(self.compiler_state, "Break statement outside loop", pos)),
+                                None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
                                 Some((_, bl)) => bl.clone(),
                             }
                         };
@@ -2154,7 +2154,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                     Statement::Continue => {
                         let cont_label = {
                             match self.loops.last() {
-                                None => return Err(syntax_error(self.compiler_state, "Break statement outside loop", pos)),
+                                None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
                                 Some((cl, _)) => cl.clone(),
                             }
                         };
@@ -2271,7 +2271,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         let brk_label;
         {
             brk_label = match self.loops.last() {
-                None => return Err(syntax_error(self.compiler_state, "Break statement outside loop", pos)),
+                None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
                 Some((_, bl)) => bl.clone(),
             };
         }
@@ -2282,9 +2282,9 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
     fn generate_continue(&mut self, pos: usize) -> Result<(), Error>
     {
         let cont_label = match self.loops.last() {
-            None => return Err(syntax_error(self.compiler_state, "Continue statement outside loop", pos)),
+            None => return Err(self.compiler_state.syntax_error("Continue statement outside loop", pos)),
             Some((cl, _)) => if cl.is_empty() {
-                return Err(syntax_error(self.compiler_state, "Continue statement outside loop", pos));
+                return Err(self.compiler_state.syntax_error("Continue statement outside loop", pos));
             } else {cl.clone()}
         };
         self.asm(JMP, &ExprType::Label(&cont_label), pos, false)?;
@@ -2319,10 +2319,10 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                         self.asm(STA, &ExprType::Absolute(name, true, 0), pos, false)?;
                         Ok(())
                     },
-                    _ => Err(syntax_error(self.compiler_state, "Strobe only works on memory pointers", pos)),
+                    _ => Err(self.compiler_state.syntax_error("Strobe only works on memory pointers", pos)),
                 }
             },
-            _ => Err(syntax_error(self.compiler_state, "Strobe only works on memory pointers", pos)),
+            _ => Err(self.compiler_state.syntax_error("Strobe only works on memory pointers", pos)),
         }
     }
 
@@ -2360,7 +2360,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                 self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?;
                 self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?
             },
-            _ => return Err(syntax_error(self.compiler_state, "Unsupported cycle sleep value", pos))
+            _ => return Err(self.compiler_state.syntax_error("Unsupported cycle sleep value", pos))
         };
         Ok(())
     }
