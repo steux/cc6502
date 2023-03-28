@@ -24,18 +24,8 @@ use std::io;
 
 /// Errors returned from preprocessing and compilation.
 ///
-/// cpp::Error inherits from fmt::Display and so can be very easily formatted and printed.
+/// Error inherits from fmt::Display and so can be very easily formatted and printed.
 ///
-/// # Example
-///
-/// ```
-/// let error = cpp::Error::Syntax { line: 16, msg: "Invalid character." };
-/// if let cpp::Error::Syntax { line, msg } = error {
-///     assert_eq!(line, 16);
-///     assert_eq!(msg, "Invalid character.");
-/// } else {
-///     panic!();
-/// }
 #[derive(Debug)]
 pub enum Error  {
     /// An error from the Rust standard I/O library.

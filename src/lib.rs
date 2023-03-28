@@ -74,6 +74,8 @@ mod tests {
     use super::Args;
     use super::compile::compile;
     use std::str;
+    mod build;
+    use build::simple_build;
 
     fn sargs(optimization_level: u8) -> Args {
         Args {
@@ -94,7 +96,7 @@ mod tests {
         let args = sargs(1); 
         let input = "unsigned char i; void main() { for (i = 0; i < 10; i++); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n\tCMP #10\n\tBCS .forend1\n.for1\n.forupdate1\n\tINC i\n\tLDA i\n\tCMP #10\n\tBCC .for1\n.forend1\n"));
@@ -105,7 +107,7 @@ mod tests {
         let args = sargs(1); 
         let input = "unsigned char i; void main() { for (i = 0; i != 10; i++); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n.for1\n.forupdate1\n\tINC i\n\tLDA i\n\tCMP #10\n\tBNE .for1\n.forend1\n"));
@@ -116,7 +118,7 @@ mod tests {
         let args = sargs(1); 
         let input = "unsigned char i, j; void main() { i = 0; j = i++; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n\tSTA j\n\tINC i\n"));
@@ -127,7 +129,7 @@ mod tests {
         let args = sargs(1); 
         let input = "unsigned char i, j; void main() { i = 0; j = ++i; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n\tINC i\n\tLDA i\n\tSTA j"));
@@ -138,7 +140,7 @@ mod tests {
         let args = sargs(1);
         let input = "short i, j, k; void main() { i = 1; j = 1; k = i + j; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
@@ -149,7 +151,7 @@ mod tests {
         let args = sargs(1);
         let input = "unsigned short i; unsigned char j; void main() { i = j; i = j << 8; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA j\n\tSTA i\n\tLDA #0\n\tSTA i+1\n\tSTA i\n\tLDA j\n\tSTA i+1"));
@@ -160,7 +162,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { if (0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("JMP .ifend1\n\tLDX #1\n.ifend1"));
@@ -171,7 +173,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { if (!0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("main\tSUBROUTINE\n\tLDX #1\n.ifend1"));
@@ -182,7 +184,7 @@ mod tests {
         let args = sargs(0);
         let input = "unsigned char i, j; void main() { i = 0; j = 0; if (i == 0 && j == 0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCMP #0\n\tBNE .ifend1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
@@ -193,7 +195,7 @@ mod tests {
         let args = sargs(0);
         let input = "unsigned char i, j; void main() { i = 0; j = 0; if (i == 0 || j == 0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
@@ -204,7 +206,7 @@ mod tests {
         let args = sargs(0);
         let input = "unsigned char i, j, k; void main() { i = 0; j = 0; k = 0; if (i == 0 || j == 0 || k == 0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA j\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA k\n\tCMP #0\n\tBNE .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
@@ -215,7 +217,7 @@ mod tests {
         let args = sargs(0);
         let input = "unsigned char i, j, k; void main() { i = 0; i = 0; k = 0; if (i == 0 && j == 0 && k == 0) X = 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCMP #0\n\tBNE .ifend1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n\tLDA k\n\tCMP #0\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
@@ -226,7 +228,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { X = 0; Y = !X; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDX #0\n\tBNE .else1\n\tLDA #1\n\tJMP .ifend1\n.else1\n\tLDA #0\n.ifend1\n\tTAY"));
@@ -237,7 +239,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { X = 0; Y = X == 0; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDX #0\n\tBEQ .else1\n\tLDA #0\n\tJMP .ifend1\n.else1\n\tLDA #1\n.ifend1\n\tTAY"));
@@ -248,7 +250,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { X = 0; Y = (X == 0)?0x10:0x20; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDX #0\n\tBNE .else1\n\tLDA #16\n\tJMP .ifend1\n.else1\n\tLDA #32\n.ifend1\n\tTAY"));
@@ -259,7 +261,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { switch(X) { case 0: case 1: Y = 0; case 2: Y = 1; break; default: Y = 2; } }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("CPX #0\n\tBEQ .switchnextstatement2\n\tCPX #1\n\tBEQ .switchnextstatement2\n\tJMP .switchnextcase3\n.switchnextstatement2\n\tLDY #0\n\tJMP .switchnextstatement4\n.switchnextcase3\n\tCPX #2\n\tBNE .switchnextcase5\n.switchnextstatement4\n\tLDY #1\n\tJMP .switchend1\n\tJMP .switchnextstatement6\n.switchnextcase5\n.switchnextstatement6\n\tLDY #2\n.switchend1"));
@@ -270,7 +272,7 @@ mod tests {
         let args = sargs(1);
         let input = "void main() { goto test; return; test: X = 0; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("JMP .test\n\tRTS\n.test\n\tLDX #0"));
@@ -281,7 +283,7 @@ mod tests {
         let args = sargs(1);
         let input = "char a, b, c, d, e, f, g; void main() { g = (a+b)+(c+(d&(e=f))); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA a\n\tCLC\n\tADC b\n\tPHA\n\tLDA f\n\tSTA e\n\tLDA d\n\tAND e\n\tSTA cctmp\n\tLDA c\n\tCLC\n\tADC cctmp\n\tSTA cctmp\n\tPLA\n\tCLC\n\tADC cctmp\n\tSTA g"));
@@ -292,7 +294,7 @@ mod tests {
         let args = sargs(1);
         let input = "inline void add() { X += Y; }; void main() { add(); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("main\tSUBROUTINE\n\tTXA\n\tCLC\n\tSTY cctmp\n\tADC cctmp\n\tTAX"));
@@ -303,7 +305,7 @@ mod tests {
         let args = sargs(1);
         let input = "inline void w() { while(Y) Y--; }; void main() { w(); w(); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains(".while1inline1\n\tCPY #0\n\tBEQ .whileend1inline1\n\tDEY\n\tJMP .while1inline1\n.whileend1inline1\n.while1inline2\n\tCPY #0\n\tBEQ .whileend1inline2\n\tDEY\n\tJMP .while1inline2\n.whileend1inline2"));
@@ -327,7 +329,7 @@ void main()
 }
             ";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA ss,X\n\tSTA ptr\n\tLDA ss+2,X\n\tSTA ptr+1\n\tLDA (ptr),Y\n\tSTA v"));
@@ -351,7 +353,7 @@ void main()
 }
             ";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA ss\n\tSTA ptr\n\tLDA ss+2\n\tSTA ptr+1\n\tLDA (ptr),Y\n\tSTA v"));
@@ -376,7 +378,7 @@ void main()
 }
             ";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA s1\n\tSTA ss\n\tLDA s1+1\n\tSTA ss+2\n\tLDA s2\n\tSTA ss+1\n\tLDA s2+1\n\tSTA ss+3\n\tLDA ss+1\n\tSTA ptr\n\tLDA ss+3\n\tSTA ptr+1\n\tLDA (ptr),Y\n\tSTA v"));
@@ -391,7 +393,7 @@ void main()
         }
         input.push_str("} while (Y);}");
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("NOP\n.dowhilecondition1\n\tCPY #0\n\tBEQ .fix1\n\tJMP .dowhile1\n.fix1\n.dowhileend1"));
@@ -402,7 +404,7 @@ void main()
         let args = sargs(1);
         let input = "char i; void main() { i = 0; load(0); }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n\tLDA #0"));
@@ -413,7 +415,7 @@ void main()
         let args = sargs(1);
         let input = "const char tab[1 + 1] = {3 * 5, 4 << 2};";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("hex 0f10"));
@@ -424,7 +426,7 @@ void main()
         let args = sargs(1);
         let input = "char c[2]; char i; void main() { c[X = i] = 0; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDX i\n\tLDA #0\n\tSTA c,X"));
@@ -435,7 +437,7 @@ void main()
         let args = sargs(1);
         let input = "short i; void main() { i--; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tSEC\n\tSBC #1\n\tSTA i\n\tLDA i+1\n\tSBC #0\n\tSTA i+1"));
@@ -446,7 +448,7 @@ void main()
         let args = sargs(1);
         let input = "short i; void main() { i += -1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCLC\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
@@ -457,7 +459,7 @@ void main()
         let args = sargs(1);
         let input = "short i; signed char x; void main() { i += x; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCLC\n\tADC x\n\tSTA i\n\tLDA x\n\tORA #127\n\tBMI .ifneg1\n\tLDA #0\n.ifneg1\n\tADC i+1\n\tSTA i+1"));
@@ -470,7 +472,7 @@ void main()
 1
 char i; void main() { i = one; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #1\n\tSTA i"));
@@ -481,7 +483,7 @@ char i; void main() { i = one; }";
         let args = sargs(1);
         let input = "char *s; void main() { s = \"zobi\\\"\\\\\"; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("cctmp0\n\thex 7a6f6269225c0"));
@@ -492,7 +494,7 @@ char i; void main() { i = one; }";
         let args = sargs(1);
         let input = "char *s = \"\tzobi\\\"\\\\\";";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("s\n\thex 097a6f6269225c00"));
@@ -503,7 +505,7 @@ char i; void main() { i = one; }";
         let args = sargs(1);
         let input = "char *s[2] = {\"zobi\", \"zoba\"};";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("cctmp0\n\thex 7a6f626900\ncctmp1\n\thex 7a6f626100\ns\n\t.byte <cctmp0, <cctmp1, >cctmp0, >cctmp1"));
@@ -514,7 +516,7 @@ char i; void main() { i = one; }";
         let args = sargs(1);
         let input = "signed char i; void main() { i >>= 1; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCMP #128\n\tROR\n\tSTA i"));
@@ -524,7 +526,7 @@ char i; void main() { i = one; }";
         let args = sargs(1);
         let input = "signed char i; void main() { i >>= 2; }";
         let mut output = Vec::new();
-        compile(input.as_bytes(), &mut output, &args).unwrap();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tLSR\n\tLSR\n\tCLC\n\tADC #224\n\tEOR #224\n\tSTA i"));

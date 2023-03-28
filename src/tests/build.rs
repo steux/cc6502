@@ -1,5 +1,5 @@
 /*
-    cc2600 - a subset of C compiler for the Atari 2600
+    cc6502 - a subset of C compiler for the 6502 processor 
     Copyright (C) 2023 Bruno STEUX 
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ use crate::assemble::AssemblyCode;
 use crate::generate::*;
 use crate::Args;
 
-pub fn build_cartridge(compiler_state: &CompilerState, writer: &mut dyn Write, args: &Args) -> Result<(), Error> 
+pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args: &Args) -> Result<(), Error> 
 {
     let mut superchip = false;
     let mut bankswitching_scheme = "4K";

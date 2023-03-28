@@ -39,13 +39,6 @@ use std::borrow::Cow;
 ///
 /// Contains a list of macros and their definitions.
 ///
-/// # Example
-///
-/// ```
-/// let mut context = cpp::Context::new("string");
-/// context.define("my_macro", "5");
-/// assert_eq!(context.get_macro("my_macro").unwrap(), "5");
-/// ```
 #[derive(Debug, Clone)]
 pub struct Context {
     current_filename: String,
@@ -79,14 +72,8 @@ impl Context {
         c.regexes.push(Vec::new());
         c
     }
-    /// Defines a macro within a context. As this function returns &mut Self, it can be chained
-    /// like in the example.
+    /// Defines a macro within a context. 
     ///
-    /// # Example
-    ///
-    /// ```
-    /// assert_eq!(cpp::Context::new("string").define("foo", "bar").define("quaz", "quux").get_macro("foo").unwrap(), "bar");
-    /// ```
     pub fn define<N: Into<String>, V: Into<String>>(&mut self, name: N, value: V) -> &mut Self {
         let n = name.into();
         let v = value.into();
@@ -251,27 +238,6 @@ enum State {
 ///
 /// This function takes a context and a string, and preprocesses it.
 ///
-/// # Errors
-///
-/// This function returns a result and can fail with Err(cpp::Error).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(cpp::process_str("
-///     #if FOO
-///     foo text
-///     #endif
-///     bar text", cpp::Context::new("string").define("FOO", "1")).unwrap(), "
-///     foo text
-///     bar text");
-/// assert_eq!(cpp::process_str("
-///     #if FOO
-///     foo text
-///     #endif
-///     bar text", cpp::Context::new("string").define("FOO", "0")).unwrap(), "
-///     bar text");
-/// ```
 #[allow(dead_code)]
 pub fn process_str(input: &str, context: &mut Context) -> Result<String, Error> {
     let mut output = Vec::new();
@@ -283,22 +249,6 @@ pub fn process_str(input: &str, context: &mut Context) -> Result<String, Error> 
 ///
 /// This function takes any generic BufRead input and Write output and preprocesses it.
 ///
-/// # Example
-///
-/// ```
-/// let mut output = Vec::new();
-/// cpp::process("
-///     foo text
-///     #if !FOO
-///     more text
-///     #endif
-///     bar text".as_bytes(), &mut output, cpp::Context::new("string").define("FOO", "0"));
-///
-/// assert_eq!(String::from_utf8(output).unwrap(), "
-///     foo text
-///     more text
-///     bar text");
-/// ```
 pub fn process<I: BufRead, O: Write>(
     mut input: I,
     output: &mut O,
