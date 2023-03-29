@@ -49,6 +49,7 @@ pub enum VariableMemory {
     Superchip,
     Display,
     Frequency,
+    Ramchip,
     MemoryOnChip(u32),
 }
 
@@ -611,11 +612,12 @@ impl<'a> CompilerState<'a> {
                     for p in pair.into_inner() {
                         //debug!("{:?}", p);
                         match p.as_rule() {
-                            Rule::var_const => memory = VariableMemory::ROM(0),
+                            Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
                             Rule::bank => memory = VariableMemory::ROM(p.into_inner().next().unwrap().as_str().parse::<u32>().unwrap()),
                             Rule::superchip => memory = VariableMemory::Superchip,
                             Rule::display => memory = VariableMemory::Display,
                             Rule::frequency => memory = VariableMemory::Frequency,
+                            Rule::ramchip => memory = VariableMemory::Ramchip, 
                             Rule::var_sign => {
                                 signed = p.as_str().eq("signed");
                                 signedness_specified = true;

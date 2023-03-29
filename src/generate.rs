@@ -574,10 +574,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.tmp_in_use = false;
                         Ok(ExprType::X) 
                     },
-                    ExprType::Absolute(_, eight_bits, _) => {
-                        if !eight_bits {
-                            return Err(self.compiler_state.syntax_error("Can't assign 16 bits data to X", pos));
-                        }
+                    ExprType::Absolute(_, _, _) => {
                         self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X;
                         Ok(ExprType::X)
@@ -650,10 +647,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.tmp_in_use = false;
                         Ok(ExprType::Y) 
                     },
-                    ExprType::Absolute(_, eight_bits, _) => {
-                        if !eight_bits {
-                            return Err(self.compiler_state.syntax_error("Can't assign 16 bits data to Y", pos));
-                        }
+                    ExprType::Absolute(_, _ , _) => {
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y;
                         Ok(ExprType::Y)
@@ -1081,7 +1075,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         return Ok(ExprType::A(signed));
                                     }
                                 } else {
-                                    return Ok(ExprType::Absolute(varname, true, offset + v.size as i32));
+                                    return Ok(ExprType::Absolute(varname, false, offset + v.size as i32));
                                 }
                             } else {
                                 return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
@@ -1372,7 +1366,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 let v = self.compiler_state.get_variable(variable);
                 let use_inc = match v.memory {
                     VariableMemory::Superchip | VariableMemory::MemoryOnChip(_) => false,
-                    _ => v.var_type == VariableType::Char,
+                    _ => *eight_bits,
                 }; 
                 if use_inc {
                     self.asm(operation, expr_type, pos, false)?;

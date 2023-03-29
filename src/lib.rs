@@ -34,6 +34,7 @@ use clap::Parser as ClapParser;
 #[command(author, about = "A subset of C compiler for the 6502 processor", long_about = "A subset of C compiler for the 6502 processor\nCopyright (C) 2023 Bruno STEUX\n\nThis program comes with ABSOLUTELY NO WARRANTY;\nThis is free software, and you are welcome to redistribute it\nunder certain conditions;")]
 pub struct Args {
     /// Input file name
+    #[arg(default_value="stdin")]
     pub input: String,
 
     /// Preprocessor definitions
@@ -45,7 +46,7 @@ pub struct Args {
     pub optimization_level: u8,
 
     /// Verbosity 
-    #[arg(short='v', default_value="false")]
+    #[arg(short, long, default_value="false")]
     pub verbose: bool,
 
     /// Include directories
@@ -66,7 +67,11 @@ pub struct Args {
     
     /// Set char signedness to unsigned (default)
     #[arg(long("funsigned_char"), default_value = "true")]
-    unsigned_chars: bool
+    unsigned_chars: bool,
+
+    /// Print compiler version
+    #[arg(long, default_value = "false")]
+    pub version: bool
 }
 
 #[cfg(test)]
@@ -88,6 +93,7 @@ mod tests {
             optimization_level,
             signed_chars: false,
             unsigned_chars: true,
+            version: false,
         }
     }
 
