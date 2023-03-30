@@ -1059,7 +1059,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     match right {
                         ExprType::Immediate(value) => {
                             if *value == 8 {
-                                if v.var_type == VariableType::CharPtr && !eight_bits && v.var_const {
+                                if v.var_type == VariableType::CharPtr && !eight_bits {
                                     if acc_in_use { self.sasm(PHA)?; }
                                     signed = self.asm(LDA, left, pos, true)?;
                                     self.flags = FlagsState::Unknown;
@@ -1075,7 +1075,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         return Ok(ExprType::A(signed));
                                     }
                                 } else {
-                                    return Ok(ExprType::Absolute(varname, false, offset + v.size as i32));
+                                    return Ok(ExprType::Absolute(varname, true, offset + v.size as i32));
                                 }
                             } else {
                                 return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
