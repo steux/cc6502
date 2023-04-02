@@ -70,7 +70,10 @@ pub struct Variable {
     pub memory: VariableMemory,
     pub size: usize,
     pub alignment: usize,
-    pub def: VariableDefinition 
+    pub def: VariableDefinition,
+    pub reversed: bool,
+    pub scattered: Option<(u32, u32)>,
+    pub holeydma: bool,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -275,7 +278,11 @@ impl<'a> CompilerState<'a> {
                 var_const: true,
                 alignment: 1,
                 def: VariableDefinition::Array(v),
-                var_type: VariableType::CharPtr, size});
+                var_type: VariableType::CharPtr, size,
+                reversed: false,
+                scattered: None,
+                holeydma: false,
+            });
         }
         Ok(res.0)
     }
@@ -598,19 +605,24 @@ impl<'a> CompilerState<'a> {
         .parse(pairs)
     }
 
+#[allow(unused_assignments)]
     fn compile_var_decl(&mut self, pairs: Pairs<Rule>) -> Result<(), Error>
     {
-        let mut var_type = VariableType::Char;
+        let mut var_type_ex = VariableType::Char;
         let mut var_const = false;
         let mut signedness_specified = false;
         let mut signed = self.signed_chars;
         let mut memory = VariableMemory::Zeropage;
         let mut alignment = 1;
+        let mut reversed = false;
+        let mut scattered = None;
+        let mut holeydma = false;
         for pair in pairs {
             match pair.as_rule() {
                 Rule::var_type => {
                     for p in pair.into_inner() {
                         //debug!("{:?}", p);
+                        let start = p.as_span().start();
                         match p.as_rule() {
                             Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
                             Rule::bank => memory = VariableMemory::ROM(p.into_inner().next().unwrap().as_str().parse::<u32>().unwrap()),
@@ -623,10 +635,34 @@ impl<'a> CompilerState<'a> {
                                 signedness_specified = true;
                             },
                             Rule::var_simple_type => if p.as_str().eq("short") {
-                                var_type = VariableType::Short;
+                                var_type_ex = VariableType::Short;
                                 if !signedness_specified { signed = true; }
                             },
-                            Rule::aligned => alignment = p.into_inner().next().unwrap().as_str().parse::<usize>().unwrap(),
+                            Rule::aligned => {
+                                let px = p.into_inner().next().unwrap();
+                                let a = self.parse_calc(px.into_inner())?;
+                                if a > 0 { alignment = a as usize } else {
+                                    return Err(self.syntax_error("Alignement must be positive", start));
+                                }
+                            },
+                            Rule::reversed => reversed = true,
+                            Rule::scattered => {
+                                let mut px = p.into_inner();
+                                let a = self.parse_calc(px.next().unwrap().into_inner())?;
+                                let b = self.parse_calc(px.next().unwrap().into_inner())?;
+                                if a > 0 && b > 0 {
+                                    scattered = Some((a as u32, b as u32));
+                                } else {
+                                    return Err(self.syntax_error("Memory scattering parameters must be positive", start));
+                                }
+#[cfg(not(feature = "atari7800"))]
+                                return Err(self.syntax_error("Memory scattering is only available on Atari 7800 ", start));
+                            } 
+                            Rule::holeydma => {
+                                holeydma = true;
+#[cfg(not(feature = "atari7800"))]
+                                return Err(self.syntax_error("Holey DMA is only available on Atari 7800 ", start));
+                            },
                             _ => unreachable!()
                         }
                     }
@@ -635,6 +671,7 @@ impl<'a> CompilerState<'a> {
                     let mut name = "";
                     let mut size = None;
                     let mut def = VariableDefinition::None;
+                    let mut var_type = var_type_ex;
                     for p in pair.into_inner() {
                         match p.as_rule() {
                             Rule::pointer => var_type = VariableType::CharPtr,
@@ -728,7 +765,8 @@ impl<'a> CompilerState<'a> {
                                                             var_const: true,
                                                             alignment: 1,
                                                             def: VariableDefinition::Array(arr),
-                                                            var_type: VariableType::CharPtr, size});
+                                                            var_type: VariableType::CharPtr, size,
+                                                            reversed: false, scattered: None, holeydma: false});
                                                         v.push(name);
                                                     },
                                                     _ => return Err(self.syntax_error("Unexpected array value", start)),
@@ -785,7 +823,9 @@ impl<'a> CompilerState<'a> {
                             var_const,
                             alignment,
                             def,
-                            var_type, size: size.unwrap_or(1)});
+                            var_type, size: size.unwrap_or(1),
+                            reversed, scattered, holeydma
+                        });
                     }
                 },
                 _ => {
@@ -1048,6 +1088,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         }
     };
 
+    #[cfg(feature="atari2600")]
     state.variables.insert("DUMMY".to_string(), Variable {
         order: state.variables.len(),
         signed: false,
@@ -1055,7 +1096,10 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         var_const: true,
         alignment: 1,
         def: VariableDefinition::Value(0x2d),
-        var_type: VariableType::Char, size: 1});
+        var_type: VariableType::Char, 
+        size: 1,
+        reversed: false, scattered: None, holeydma: false,
+    });
 
     // Generate assembly code from compilation output (abstract syntax tree)
     builder(&state, output, args)?;

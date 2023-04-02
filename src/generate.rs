@@ -1031,6 +1031,7 @@ impl<'a, 'b> GeneratorState<'a> {
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(signed))
         } else {
+            self.acc_in_use = true;
             Ok(ExprType::A(signed))
         }
     }
@@ -1072,6 +1073,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.tmp_in_use = true;
                                         return Ok(ExprType::Tmp(signed));
                                     } else {
+                                        self.acc_in_use = true;
                                         return Ok(ExprType::A(signed));
                                     }
                                 } else {
@@ -1099,6 +1101,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
                                 } else {
+                                    self.acc_in_use = true;
                                     return Ok(ExprType::A(signed));
                                 }
                             } else {
@@ -1129,6 +1132,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
                                 } else {
+                                    self.acc_in_use = true;
                                     return Ok(ExprType::A(signed));
                                 }
                             } else {
@@ -1153,6 +1157,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.tmp_in_use = true;
                                     return Ok(ExprType::Tmp(signed));
                                 } else {
+                                    self.acc_in_use = true;
                                     return Ok(ExprType::A(signed));
                                 }
                             } else {
@@ -1233,6 +1238,7 @@ impl<'a, 'b> GeneratorState<'a> {
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(signed))
         } else {
+            self.acc_in_use = true;
             Ok(ExprType::A(signed))
         }
     }
@@ -1748,6 +1754,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             self.tmp_in_use = true;
             Ok(ExprType::Tmp(true))
         } else {
+            self.acc_in_use = true;
             Ok(ExprType::A(true))
         }
     }

@@ -1,0 +1,5 @@
+v0.3.0 (4/2/2023) :
+    - Added "atari2600" and "atari7800" cargo features
+    - Corrected missing acc in use flags
+    - Corrected bug with respect to definition of multiple arrays on the same line
+
