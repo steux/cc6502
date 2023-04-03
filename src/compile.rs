@@ -672,19 +672,20 @@ impl<'a> CompilerState<'a> {
                     let mut size = None;
                     let mut def = VariableDefinition::None;
                     let mut var_type = var_type_ex;
+                    let mut start = 0;
                     for p in pair.into_inner() {
                         match p.as_rule() {
                             Rule::pointer => var_type = VariableType::CharPtr,
                             Rule::var_const => var_const = true,
                             Rule::id_name => {
                                 name = p.as_str();
-                                let start = p.as_span().start();
+                                start = p.as_span().start();
                                 if self.variables.get(name).is_some() {
                                     return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
                                 }
                             },
                             Rule::array_spec => {
-                                let start = p.as_span().start();
+                                start = p.as_span().start();
                                 if let Some(px) = p.into_inner().next() {
                                     size = Some(self.parse_calc(px.into_inner())? as usize);
                                 }
@@ -712,7 +713,7 @@ impl<'a> CompilerState<'a> {
                                         } 
                                     },
                                     Rule::array_def => {
-                                        let start = px.as_span().start();
+                                        start = px.as_span().start();
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
                                             _ => VariableMemory::ROM(0)
@@ -783,7 +784,7 @@ impl<'a> CompilerState<'a> {
                                         var_const = true;
                                     },
                                     Rule::quoted_string => {
-                                        let start = px.as_span().start();
+                                        start = px.as_span().start();
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
                                             _ => VariableMemory::ROM(0)
@@ -812,6 +813,15 @@ impl<'a> CompilerState<'a> {
                     if def == VariableDefinition::None {
                         if let VariableMemory::ROM(bank) = memory {
                             memory = VariableMemory::MemoryOnChip(bank);
+                        }
+                    }
+
+#[cfg(feature = "atari7800")]
+                    if holeydma {
+                        if let Some((a, _)) = scattered {
+                            if a != 8 && a != 16 {
+                                return Err(self.syntax_error("Holey DMA is only available for 8 or 16 lines scattering", start));
+                            }
                         }
                     }
 
