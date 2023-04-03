@@ -120,18 +120,33 @@ impl AssemblyCode {
             code: Vec::<AsmLine>::new()
         }
     }
+
+    pub fn size_bytes(&self) -> u32 {
+        let mut size = 0;
+        for c in self.code.iter() {
+            if let AsmLine::Instruction(i) = c {
+                size += i.nb_bytes;
+            }
+        }
+        size
+    }
+
     pub fn append_asm(&mut self, inst: AsmInstruction) {
         self.code.push(AsmLine::Instruction(inst));
     }
+
     pub fn append_inline(&mut self, s: String) {
         self.code.push(AsmLine::Inline(s));
     }
+
     pub fn append_label(&mut self, s: String) {
         self.code.push(AsmLine::Label(s));
     }
+
     pub fn append_comment(&mut self, s: String) {
         self.code.push(AsmLine::Comment(s));
     }
+
     // For inlined code: modify local labels in each instruction
     pub fn append_code(&mut self, code: &AssemblyCode, inline_counter: u32)  {
         for i in &code.code {
@@ -157,6 +172,7 @@ impl AssemblyCode {
         }
         //self.code.extend_from_slice(&code.code);
     }
+
     pub fn write(&self, writer: &mut dyn Write, cycles: bool) -> Result<usize, std::io::Error> {
         let mut s = 0;
         for i in &self.code {

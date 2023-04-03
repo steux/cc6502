@@ -1,5 +1,6 @@
-v0.3.1 :
-    - Checked scattering vailidaty for atari 7800 (8 or 16 lines)
+v0.3.1 (4/3/2023) :
+    - Added function size_bytes() to generated code
+    - Checked scattering validity for atari 7800 (8 or 16 lines)
 
 v0.3.0 (4/2/2023) :
     - Added "atari2600" and "atari7800" cargo features
