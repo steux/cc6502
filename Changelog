@@ -1,3 +1,7 @@
+v0.3.2 (4/4/2023) :
+    - Added screencode support for constant strings declarations
+    - Added support for comma operator
+
 v0.3.1 (4/3/2023) :
     - Added function size_bytes() to generated code
     - Checked scattering validity for atari 7800 (8 or 16 lines)

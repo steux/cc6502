@@ -619,6 +619,7 @@ impl<'a> CompilerState<'a> {
         let mut reversed = false;
         let mut scattered = None;
         let mut holeydma = false;
+        let mut screencode = false;
         for pair in pairs {
             match pair.as_rule() {
                 Rule::var_type => {
@@ -664,6 +665,9 @@ impl<'a> CompilerState<'a> {
                                 holeydma = true;
 #[cfg(not(feature = "atari7800"))]
                                 return Err(self.syntax_error("Holey DMA is only available on Atari 7800 ", start));
+                            },
+                            Rule::screencode => {
+                                screencode = true;
                             },
                             _ => unreachable!()
                         }
@@ -799,7 +803,16 @@ impl<'a> CompilerState<'a> {
                                         let vb = string.as_bytes();
                                         let mut v = Vec::<i32>::new();
                                         for c in vb.iter() {
-                                            v.push(*c as i32);
+                                            let d = if screencode {
+                                                if *c < 32 { *c + 128 }
+                                                else if *c < 64 { *c }
+                                                else if *c < 96 { *c - 64 }
+                                                else if *c < 128 { *c - 32 }
+                                                else if *c < 160 { *c + 64 }
+                                                else if *c < 255 { *c - 128 }
+                                                else { 94 }
+                                            } else { *c };
+                                            v.push(d as i32);
                                         }
                                         size = Some(v.len());
                                         def = VariableDefinition::Array(v);
