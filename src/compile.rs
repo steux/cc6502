@@ -97,7 +97,8 @@ pub enum Operation {
     Land,
     Lor,
     TernaryCond1,
-    TernaryCond2
+    TernaryCond2,
+    Comma
 }
 
 #[derive(Debug, Clone)]
@@ -346,6 +347,7 @@ impl<'a> CompilerState<'a> {
                 Rule::lor => Operation::Lor,
                 Rule::ternary_cond1 => Operation::TernaryCond1,
                 Rule::ternary_cond2 => Operation::TernaryCond2,
+                Rule::comma => Operation::Comma,
                 rule => unreachable!("Expr::parse expected infix operation, found {:?}", rule),
             };
             Ok(Expr::BinOp {
