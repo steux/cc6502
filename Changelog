@@ -1,3 +1,6 @@
+v0.3.3 :
+    - Adds a default 3 bytes for inline asm (for code size estimation)
+
 v0.3.2 (4/4/2023) :
     - Added screencode support for constant strings declarations
     - Added support for comma operator
