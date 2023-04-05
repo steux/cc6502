@@ -124,8 +124,14 @@ impl AssemblyCode {
     pub fn size_bytes(&self) -> u32 {
         let mut size = 0;
         for c in self.code.iter() {
-            if let AsmLine::Instruction(i) = c {
-                size += i.nb_bytes;
+            match c {
+                AsmLine::Instruction(i) => {
+                    size += i.nb_bytes;
+                },
+                AsmLine::Inline(_) => {
+                    size += 3; // Worst case asm instruction
+                },
+                _ => {}
             }
         }
         size
@@ -489,6 +495,9 @@ impl AssemblyCode {
                                                 break;
                                             } 
                                         },
+                                        AsmLine::Inline(_) => {
+                                            bytes_above += 3; // Worst case asm instruction
+                                        },
                                         AsmLine::Instruction(k) => {
                                             debug!("Iter above: {:?}", k);
                                             bytes_above += k.nb_bytes;
@@ -503,6 +512,9 @@ impl AssemblyCode {
                                             above = false;
                                             break;
                                         } 
+                                    },
+                                    Some(AsmLine::Inline(_)) => {
+                                        bytes_below += 3; // Worst case asm instruction
                                     },
                                     Some(AsmLine::Instruction(k)) => {
                                         debug!("Iter below: {:?}", k);
