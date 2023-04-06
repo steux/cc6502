@@ -1329,7 +1329,13 @@ impl<'a, 'b> GeneratorState<'a> {
                                     }
                                 } else if self.current_bank == 0 {
                                     // Generate bankswitching call
-                                    self.asm(JSR, &ExprType::Label(&format!("Call{}", *var)), pos, false)?;
+                                    if self.bankswitching_scheme == "SuperGame" {
+                                        self.asm(LDA, &ExprType::Immediate((f.bank - 1) as i32), pos, false)?;
+                                        self.asm(STA, &ExprType::Absolute("ROM_SELECT", true, 0), pos, false)?;
+                                        self.asm(JSR, &ExprType::Label(var), pos, false)?;
+                                    } else {
+                                        self.asm(JSR, &ExprType::Label(&format!("Call{}", *var)), pos, false)?;
+                                    }
                                 } else {
                                     return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                 }
