@@ -714,9 +714,6 @@ impl<'a> CompilerState<'a> {
                                     Rule::calc_expr => {
                                         let v = self.parse_calc(px.into_inner())?;
                                         def = VariableDefinition::Value(v);
-                                        if var_type == VariableType::CharPtr && v > 1023 {
-                                            memory = VariableMemory::MemoryOnChip(0);
-                                        } 
                                     },
                                     Rule::array_def => {
                                         start = px.as_span().start();
@@ -825,6 +822,7 @@ impl<'a> CompilerState<'a> {
                         }
                     }
 
+                    // If there is no definition, then it's not ROM, it's a variable in RAM on the cart
                     if def == VariableDefinition::None {
                         if let VariableMemory::ROM(bank) = memory {
                             memory = VariableMemory::MemoryOnChip(bank);
