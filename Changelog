@@ -1,3 +1,5 @@
+v0.3.4 :
+    - Added better support for macros with parameters (accepts spaces after comma, substitutes words only)
 v0.3.3 (4/6/2023) :
     - Removed strange MemoryOnChip flag in compile_var_decl for constants out of zeropage...
     - Added SuperGame bankswitching (for Atari 7800)
