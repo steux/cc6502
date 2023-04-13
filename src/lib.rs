@@ -187,46 +187,46 @@ mod tests {
     
     #[test]
     fn if_test3() {
-        let args = sargs(0);
+        let args = sargs(1);
         let input = "unsigned char i, j; void main() { i = 0; j = 0; if (i == 0 && j == 0) X = 1; }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA j\n\tLDA i\n\tBNE .ifend1\n\tLDA j\n\tBNE .ifend1\n\tLDX #1"));
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCMP #0\n\tBNE .ifend1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
     }
     
     #[test]
     fn if_test4() {
-        let args = sargs(0);
+        let args = sargs(1);
         let input = "unsigned char i, j; void main() { i = 0; j = 0; if (i == 0 || j == 0) X = 1; }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA j\n\tLDA i\n\tBEQ .ifstart1\n\tLDA j\n\tBNE .ifend1\n.ifstart1\n\tLDX #1"));
     }
     
     #[test]
     fn if_test5() {
-        let args = sargs(0);
+        let args = sargs(1);
         let input = "unsigned char i, j, k; void main() { i = 0; j = 0; k = 0; if (i == 0 || j == 0 || k == 0) X = 1; }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA j\n\tCMP #0\n\tBEQ .ifstart1\n\tLDA k\n\tCMP #0\n\tBNE .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA j\n\tSTA k\n\tLDA i\n\tBEQ .ifstart1\n\tLDA j\n\tBEQ .ifstart1\n\tLDA k\n\tBNE .ifend1\n.ifstart1\n\tLDX #1"));
     }
     
     #[test]
     fn if_test6() {
-        let args = sargs(0);
+        let args = sargs(1);
         let input = "unsigned char i, j, k; void main() { i = 0; i = 0; k = 0; if (i == 0 && j == 0 && k == 0) X = 1; }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCMP #0\n\tBNE .ifend1\n\tLDA j\n\tCMP #0\n\tBNE .ifend1\n\tLDA k\n\tCMP #0\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA i\n\tSTA k\n\tLDA i\n\tBNE .ifend1\n\tLDA j\n\tBNE .ifend1\n\tLDA k\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
     }
     
     #[test]
@@ -402,7 +402,7 @@ void main()
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("NOP\n.dowhilecondition1\n\tCPY #0\n\tBEQ .fix1\n\tJMP .dowhile1\n.fix1\n.dowhileend1"));
+        assert!(result.contains("CPY #0\n\tBEQ .fix1\n\tJMP .dowhile1\n.fix1\n.dowhileend1"));
     }
 
     #[test]
@@ -559,5 +559,38 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDY #0\n\tLDX #0\n.for1\n.forupdate1\n\tINY\n\tINX\n\tCPX #10\n\tBNE .for1"));
+    }
+
+    #[test]
+    fn for_test() {
+        let args = sargs(1);
+        let input = "void main() { for (Y = 127; Y >= 0; Y--); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDY #127\n\tBMI .forend1\n.for1\n.forupdate1\n\tDEY\n\tBPL .for1\n.forend1"));
+    }
+    
+    #[test]
+    fn for_test2() {
+        let args = sargs(1);
+        let input = "void main() { for (Y = 255; Y > 0; Y--); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDY #255\n\tBEQ .forend1\n.for1\n.forupdate1\n\tDEY\n\tBEQ .ifhere1\n.ifhere1\n.forend1"));
+    }
+    
+    #[test]
+    fn while_test() {
+        let args = sargs(1);
+        let input = "void main() {  do { Y--; } while (Y >= 0); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(".dowhile1\n\tDEY\n\tBPL .dowhile1"));
     }
 }

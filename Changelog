@@ -1,5 +1,7 @@
-v0.3.4 :
+v0.3.4 (4/13/2023) :
+    - Added better optimization for branching (to be fully tested)
     - Added better support for macros with parameters (accepts spaces after comma, substitutes words only)
+
 v0.3.3 (4/6/2023) :
     - Removed strange MemoryOnChip flag in compile_var_decl for constants out of zeropage...
     - Added SuperGame bankswitching (for Atari 7800)

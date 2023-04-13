@@ -41,9 +41,10 @@ pub enum ExprType<'a> {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum FlagsState<'a> {
     Unknown,
-    X, Y,
-    Zero, 
+    A, X, Y,
     Absolute(&'a str, bool, i32),
+    AbsoluteX(&'a str),
+    AbsoluteY(&'a str),
 }
 
 pub struct GeneratorState<'a> {
@@ -56,7 +57,7 @@ pub struct GeneratorState<'a> {
     pub local_label_counter_if: u32,
     local_label_counter_while: u32,
     inline_label_counter: u32,
-    loops: Vec<(String,String)>,
+    loops: Vec<(String,String,bool)>,
     flags: FlagsState<'a>,
     acc_in_use: bool,
     tmp_in_use: bool,
@@ -472,6 +473,7 @@ impl<'a, 'b> GeneratorState<'a> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             code.append_label(l.to_string());
+            self.flags = FlagsState::Unknown;
         }
         Ok(()) 
     } 
@@ -698,18 +700,17 @@ impl<'a, 'b> GeneratorState<'a> {
                                 self.asm(STX, left, pos, high_byte)?;
                                 if !eight_bits {
                                     if *offset == 0 {
+                                        // Set high byte of this 16 bits variable to 0 (since X is unsigned)
                                         if self.acc_in_use { self.sasm(PHA)?; }
                                         self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
                                         self.asm(STA, left, pos, true)?;
                                         if self.acc_in_use { 
                                             self.sasm(PLA)?;
-                                            self.flags = FlagsState::Unknown;
-                                        } else {
-                                            self.flags = FlagsState::Zero;
                                         }
                                     } else {
                                         unreachable!(); 
                                     }
+                                    self.flags = FlagsState::Unknown;
                                 }
                                 Ok(ExprType::X)
                             },
@@ -764,13 +765,11 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.asm(STA, left, pos, true)?;
                                         if self.acc_in_use { 
                                             self.sasm(PLA)?;
-                                            self.flags = FlagsState::Unknown;
-                                        } else {
-                                            self.flags = FlagsState::Zero;
                                         }
                                     } else {
                                         unreachable!(); 
                                     }
+                                    self.flags = FlagsState::Unknown;
                                 }
                                 Ok(ExprType::Y)
                             },
@@ -830,15 +829,24 @@ impl<'a, 'b> GeneratorState<'a> {
                             _ => unreachable!()
                         };
                         match left {
-                            ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
+                            ExprType::Absolute(a, b, c) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = FlagsState::Unknown;
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::Absolute(a, *b, *c) }
+                            },
+                            ExprType::AbsoluteX(s) => {
+                                self.asm(STA, left, pos, high_byte)?;
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteX(s) }
+                            },
+                            ExprType::AbsoluteY(s) => {
+                                self.asm(STA, left, pos, high_byte)?;
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteY(s) }
                             },
                             ExprType::A(_) => {
                                 if acc_in_use {
                                     return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.acc_in_use = true;
+                                self.flags = FlagsState::Unknown;
                                 return Ok(ExprType::A(signed));
                             },
                             ExprType::Tmp(_) => {
@@ -901,6 +909,7 @@ impl<'a, 'b> GeneratorState<'a> {
             }
         };
 
+        let signed;
         match left {
             ExprType::Immediate(l) => {
                 match right {
@@ -919,12 +928,13 @@ impl<'a, 'b> GeneratorState<'a> {
                     _ => {
                         if acc_in_use { self.sasm(PHA)?; }
                         self.asm(LDA, left, pos, high_byte)?;
+                        signed = false;
                     }
                 };
             },
             ExprType::Absolute(variable, eight_bits, off) => {
+                let v = self.compiler_state.get_variable(variable);
                 if let ExprType::Immediate(r) = right {
-                    let v = self.compiler_state.get_variable(variable);
                     if v.var_type == VariableType::CharPtr && !*eight_bits && v.var_const {
                         match op {
                             Operation::Add(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off + *r)),
@@ -940,26 +950,33 @@ impl<'a, 'b> GeneratorState<'a> {
                 }
                 if acc_in_use { self.sasm(PHA)?; }
                 self.asm(LDA, left, pos, high_byte)?;
+                signed = v.signed;
             },
-            ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
+            ExprType::AbsoluteX(s) | ExprType::AbsoluteY(s) => {
+                let v = self.compiler_state.get_variable(s);
+                signed = v.signed;
                 if acc_in_use { self.sasm(PHA)?; }
                 self.asm(LDA, left, pos, high_byte)?;
             },
-            ExprType::Tmp(_) => {
+            ExprType::Tmp(s) => {
                 if acc_in_use { self.sasm(PHA)?; }
                 self.asm(LDA, left, pos, high_byte)?;
                 self.tmp_in_use = false;
+                signed = *s;
             },
             ExprType::X => {
                 if acc_in_use { self.sasm(PHA)?; }
                 self.sasm(TXA)?;
+                signed = false;
             },
             ExprType::Y => {
                 if acc_in_use { self.sasm(PHA)?; }
                 self.sasm(TYA)?;
+                signed = false;
             },
-            ExprType::A(_) => {
+            ExprType::A(s) => {
                 acc_in_use = false;
+                signed = *s;
             },
             _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
         }
@@ -990,16 +1007,14 @@ impl<'a, 'b> GeneratorState<'a> {
             Operation::Div(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a divider.", pos)) },
             _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
         };
-        let signed;
         match right2 {
             ExprType::Immediate(v) => {
-                signed = if *v == 0 && !high_byte { false } else { self.asm(operation, right2, pos, high_byte)? };
+                if *v != 0 || high_byte { self.asm(operation, right2, pos, high_byte)?; };
             },
             ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
-                signed = self.asm(operation, right2, pos, high_byte)?;
+                self.asm(operation, right2, pos, high_byte)?;
             },
             ExprType::X => {
-                signed = false;
                 if self.tmp_in_use {
                     return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                 }
@@ -1007,21 +1022,18 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.asm(operation, &ExprType::Tmp(false), pos, high_byte)?;
             },
             ExprType::Y => {
-                signed = false;
                 if self.tmp_in_use {
                     return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                 }
                 self.asm(STY, &ExprType::Tmp(false), pos, high_byte)?;
                 self.asm(operation, &ExprType::Tmp(false), pos, high_byte)?;
             },
-            ExprType::Tmp(s) => {
+            ExprType::Tmp(_) => {
                 self.asm(operation, right2, pos, high_byte)?;
                 self.tmp_in_use = false;
-                signed = *s;
             },
             _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
         };
-        self.flags = FlagsState::Unknown;
         if acc_in_use {
             self.asm(STA, &ExprType::Tmp(false), pos, high_byte)?;
             self.sasm(PLA)?;
@@ -1029,9 +1041,11 @@ impl<'a, 'b> GeneratorState<'a> {
                 return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
             }
             self.tmp_in_use = true;
+            self.flags = FlagsState::Unknown;
             Ok(ExprType::Tmp(signed))
         } else {
             self.acc_in_use = true;
+            self.flags = FlagsState::A;
             Ok(ExprType::A(signed))
         }
     }
@@ -1398,7 +1412,7 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             ExprType::AbsoluteX(variable) => {
                 self.asm(operation, expr_type, pos, false)?;
-                self.flags = FlagsState::Unknown;
+                self.flags = FlagsState::AbsoluteX(variable);
                 Ok(ExprType::AbsoluteX(variable))
             },
             ExprType::AbsoluteY(_) => {
@@ -1807,11 +1821,10 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             Operation::Lte => {
                 if signed {
                     self.asm(BMI, &ExprType::Label(label), 0, false)?;
-                    self.asm(BEQ, &ExprType::Label(label), 0, false)?;
                 } else {
                     self.asm(BCC, &ExprType::Label(label), 0, false)?;
-                    self.asm(BEQ, &ExprType::Label(label), 0, false)?;
                 } 
+                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
                 Ok(())
             },
             Operation::Gte => {
@@ -1820,6 +1833,49 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                 } else {
                     self.asm(BCS, &ExprType::Label(label), 0, false)?;
                 } 
+                Ok(())
+            },
+            _ => Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
+        }
+    }
+
+    // Alternate compare when CMP is avoided (comparison with 0)
+    // In thase case, never use the carry flag : it's probably incorrectly set
+    fn generate_branch_instruction_alt(&mut self, op: &Operation, signed: bool, label: &str) -> Result<(), Error>
+    {
+        // Branch instruction
+        match op {
+            Operation::Neq => {
+                self.asm(BNE, &ExprType::Label(label), 0, false)?;
+                Ok(())
+            },
+            Operation::Eq => {
+                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                Ok(())
+            },
+            Operation::Lt => {
+                self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                Ok(())
+            },
+            Operation::Gt => {
+                self.local_label_counter_if += 1;
+                let label_here = format!(".ifhere{}", self.local_label_counter_if);
+                self.asm(BEQ, &ExprType::Label(&label_here), 0, false)?;
+                if signed {
+                    self.asm(BPL, &ExprType::Label(label), 0, false)?;
+                }
+                self.label(&label_here)?;
+                Ok(())
+            },
+            Operation::Lte => {
+                if signed {
+                    self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                }
+                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                Ok(())
+            },
+            Operation::Gte => {
+                self.asm(BPL, &ExprType::Label(label), 0, false)?;
                 Ok(())
             },
             _ => Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
@@ -1886,13 +1942,23 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                             return Ok(());
                         },
                         _ => {
+                            // Special case : deterministic condition
                             if let ExprType::Immediate(v) = left {
                                 if (operator == Operation::Neq && *v != 0) || (operator == Operation::Eq && *v == 0) {
                                     self.asm(JMP, &ExprType::Label(label), pos, false)?;
                                 }
                                 return Ok(());
                             }
-                            return self.generate_branch_instruction(&operator, true, label);
+                            let signed = match left {
+                                ExprType::X | ExprType::Y => false,
+                                ExprType::A(s) => *s,
+                                ExprType::AbsoluteX(s) | ExprType::AbsoluteY(s) | ExprType::Absolute(s, _, _) => {
+                                    let v = self.compiler_state.get_variable(s);
+                                    v.signed
+                                },
+                                _ => unreachable!(),
+                            };
+                            return self.generate_branch_instruction_alt(&operator, signed, label);
                         } 
                     }
                 } 
@@ -1903,33 +1969,44 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         let signed;
         let cmp;
         match left {
-            ExprType::Absolute(_, eight_bits, _) => {
-                if self.acc_in_use { self.sasm(PHA)?; }
+            ExprType::Absolute(a, eight_bits, b) => {
+                if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 if !eight_bits {
                     return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                 }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
+                self.flags = FlagsState::Absolute(a, *eight_bits, *b);
             },
-            ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_)=> {
-                if self.acc_in_use { self.sasm(PHA)?; }
+            ExprType::AbsoluteX(s) => {
+                if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
+                self.flags = FlagsState::AbsoluteX(s);
+            },
+            ExprType::AbsoluteY(s) => {
+                if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
+                signed = self.asm(LDA, left, pos, false)?;
+                cmp = true;
+                self.flags = FlagsState::AbsoluteY(s);
             },
             ExprType::A(sign) => {
                 cmp = true;
                 signed = *sign;
                 self.acc_in_use = false;
+                self.flags = FlagsState::A;
             },
             ExprType::Tmp(sign) => {
-                if self.acc_in_use { self.sasm(PHA)?; }
+                if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 signed = *sign;
                 self.asm(LDA, left, pos, false)?;
                 self.tmp_in_use = false;
+                self.flags = FlagsState::Unknown;
                 cmp = true;
             },
             ExprType::Y => {
                 signed = false;
+                self.flags = FlagsState::Unknown;
                 match right {
                     ExprType::Immediate(_) => {
                         self.asm(CPY, right, pos, false)?;
@@ -1961,6 +2038,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             },
             ExprType::X => {
                 signed = false;
+                self.flags = FlagsState::Unknown;
                 match right {
                     ExprType::Immediate(_) => {
                         self.asm(CPX, right, pos, false)?;
@@ -1995,26 +2073,28 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
 
         if cmp {
             match right {
-                ExprType::Immediate(_) => {
-                    self.asm(CMP, right, pos, false)?;
+                ExprType::Immediate(v) => {
+                    if *v != 0 {
+                        self.asm(CMP, right, pos, false)?;
+                        self.flags = FlagsState::Unknown;
+                    } else {
+                        // No CMP
+                        return self.generate_branch_instruction_alt(&operator, signed, label)
+                    }
                 },
                 ExprType::Absolute(_, eight_bits, _) => {
                     if !eight_bits {
                         return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                     }
                     self.asm(CMP, right, pos, false)?;
+                    self.flags = FlagsState::Unknown;
                 },
-                ExprType::AbsoluteX(_) => {
+                ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
                     self.asm(CMP, right, pos, false)?;
-                },
-                ExprType::AbsoluteY(_) => {
-                    self.asm(CMP, right, pos, false)?;
+                    self.flags = FlagsState::Unknown;
                 },
                 _ => return Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
             } 
-            if self.acc_in_use { 
-                self.sasm(PLA)?; 
-            }
         }
 
         self.generate_branch_instruction(&operator, signed, label)
@@ -2073,6 +2153,9 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
 
         let expr = self.generate_expr(condition, pos, false)?;
         if flags_ok(&self.flags, &expr) {
+            if let ExprType::A(_) = expr {
+                self.acc_in_use = false;
+            }
             if negate {
                 self.asm(BEQ, &ExprType::Label(label), pos, false)?;
             } else {
@@ -2090,27 +2173,37 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                     } else if negate {
                         self.asm(JMP, &ExprType::Label(label), pos, false)?;
                     }
+                    self.flags = FlagsState::Unknown;
                     return Ok(());
                 },
-                ExprType::Absolute(_, eight_bits, _) => {
+                ExprType::Absolute(a, eight_bits, b) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     if !eight_bits {
                         return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
                     }
                     self.asm(LDA, &expr, pos, false)?;
+                    self.flags = FlagsState::Absolute(a, eight_bits, b);
                 },
-                ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
+                ExprType::AbsoluteX(s) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     self.asm(LDA, &expr, pos, false)?;
+                    self.flags = FlagsState::AbsoluteX(s);
+                },
+                ExprType::AbsoluteY(s) => {
+                    if self.acc_in_use { self.sasm(PHA)?; }
+                    self.asm(LDA, &expr, pos, false)?;
+                    self.flags = FlagsState::AbsoluteY(s);
                 },
                 ExprType::A(_) => {
                     self.acc_in_use = false;
                 },
                 ExprType::Y => {
                     self.asm(CPY, &ExprType::Immediate(0), pos, false)?;
+                    self.flags = FlagsState::Y;
                 },
                 ExprType::X => {
                     self.asm(CPX, &ExprType::Immediate(0), pos, false)?;
+                    self.flags = FlagsState::X;
                 }
                 ExprType::Tmp(_) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
@@ -2136,7 +2229,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         let forupdate_label = format!(".forupdate{}", self.local_label_counter_for);
         let forend_label = format!(".forend{}", self.local_label_counter_for);
         self.generate_expr(init, pos, false)?;
-        self.loops.push((forupdate_label.clone(), forend_label.clone()));
+        self.loops.push((forupdate_label.clone(), forend_label.clone(), false));
         self.generate_condition(condition, pos, true, &forend_label)?;
         self.label(&for_label)?;
         self.generate_statement(body)?;
@@ -2160,7 +2253,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                         let brk_label = {
                             match self.loops.last() {
                                 None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
-                                Some((_, bl)) => bl.clone(),
+                                Some((_, bl, _)) => bl.clone(),
                             }
                         };
                         self.generate_condition(condition, pos, false, &brk_label)?;
@@ -2169,10 +2262,11 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                         let cont_label = {
                             match self.loops.last() {
                                 None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
-                                Some((cl, _)) => cl.clone(),
+                                Some((cl, _, _)) => cl.clone(),
                             }
                         };
                         self.generate_condition(condition, pos, false, &cont_label)?;
+                        self.loops.last_mut().unwrap().2 = true;
                     },
                     _ => {
                         self.generate_condition(condition, pos, true, &ifend_label)?;
@@ -2203,8 +2297,8 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         self.local_label_counter_if += 1;
         let switchend_label = format!(".switchend{}", self.local_label_counter_if);
         match self.loops.last() {
-            Some(l) => self.loops.push((l.0.clone(), switchend_label.clone())),
-            None => self.loops.push(("".to_string(), switchend_label.clone()))
+            Some(l) => self.loops.push((l.0.clone(), switchend_label.clone(), false)),
+            None => self.loops.push(("".to_string(), switchend_label.clone(), false))
         }
         self.local_label_counter_if += 1;
         let mut switchnextstatement_label = format!(".switchnextstatement{}", self.local_label_counter_if);
@@ -2253,7 +2347,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             self.local_label_counter_while += 1;
             let while_label = format!(".while{}", self.local_label_counter_while);
             let whileend_label = format!(".whileend{}", self.local_label_counter_while);
-            self.loops.push((while_label.clone(), whileend_label.clone()));
+            self.loops.push((while_label.clone(), whileend_label.clone(), false));
             self.label(&while_label)?;
             self.generate_condition(condition, pos, true, &whileend_label)?;
             self.generate_statement(body)?;
@@ -2270,10 +2364,12 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         let dowhile_label = format!(".dowhile{}", self.local_label_counter_while);
         let dowhilecondition_label = format!(".dowhilecondition{}", self.local_label_counter_while);
         let dowhileend_label = format!(".dowhileend{}", self.local_label_counter_while);
-        self.loops.push((dowhilecondition_label.clone(), dowhileend_label.clone()));
+        self.loops.push((dowhilecondition_label.clone(), dowhileend_label.clone(), false));
         self.label(&dowhile_label)?;
         self.generate_statement(body)?;
-        self.label(&dowhilecondition_label)?;
+        if self.loops.last().unwrap().2 {
+            self.label(&dowhilecondition_label)?;
+        }
         self.generate_condition(condition, pos, false, &dowhile_label)?;
         self.label(&dowhileend_label)?;
         self.loops.pop();
@@ -2286,7 +2382,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         {
             brk_label = match self.loops.last() {
                 None => return Err(self.compiler_state.syntax_error("Break statement outside loop", pos)),
-                Some((_, bl)) => bl.clone(),
+                Some((_, bl, _)) => bl.clone(),
             };
         }
         self.asm(JMP, &ExprType::Label(&brk_label), pos, false)?;
@@ -2297,11 +2393,12 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
     {
         let cont_label = match self.loops.last() {
             None => return Err(self.compiler_state.syntax_error("Continue statement outside loop", pos)),
-            Some((cl, _)) => if cl.is_empty() {
+            Some((cl, _, _)) => if cl.is_empty() {
                 return Err(self.compiler_state.syntax_error("Continue statement outside loop", pos));
-            } else {cl.clone()}
+            } else { cl.clone() }
         };
         self.asm(JMP, &ExprType::Label(&cont_label), pos, false)?;
+        self.loops.last_mut().unwrap().2 = true;
         Ok(())
     }
 
@@ -2469,6 +2566,9 @@ fn flags_ok(flags: &FlagsState, expr_type: &ExprType) -> bool
     match flags {
         FlagsState::X => *expr_type == ExprType::X,
         FlagsState::Y => *expr_type == ExprType::Y,
+        FlagsState::A => if let ExprType::A(_) = *expr_type { true } else { false },
+        FlagsState::AbsoluteX(s) => *expr_type == ExprType::AbsoluteX(s),
+        FlagsState::AbsoluteY(s) => *expr_type == ExprType::AbsoluteY(s),
         FlagsState::Absolute(var, eight_bits, offset) => *expr_type == ExprType::Absolute(var, *eight_bits, *offset),
         _ => false
     }
