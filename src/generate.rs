@@ -59,6 +59,7 @@ pub struct GeneratorState<'a> {
     inline_label_counter: u32,
     loops: Vec<(String,String,bool)>,
     flags: FlagsState<'a>,
+    carry_flag_ok: bool,
     acc_in_use: bool,
     tmp_in_use: bool,
     insert_code: bool,
@@ -84,6 +85,7 @@ impl<'a, 'b> GeneratorState<'a> {
             inline_label_counter: 0,
             loops: Vec::new(),
             flags: FlagsState::Unknown,
+            carry_flag_ok: false,
             acc_in_use: false,
             tmp_in_use: false,
             insert_code,
@@ -474,6 +476,7 @@ impl<'a, 'b> GeneratorState<'a> {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             code.append_label(l.to_string());
             self.flags = FlagsState::Unknown;
+            self.carry_flag_ok = false;
         }
         Ok(()) 
     } 
@@ -568,17 +571,20 @@ impl<'a, 'b> GeneratorState<'a> {
                     ExprType::Immediate(_) => {
                         self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X; 
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X) 
                     },
                     ExprType::Tmp(_) => {
                         self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X; 
                         self.tmp_in_use = false;
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X) 
                     },
                     ExprType::Absolute(_, _, _) => {
                         self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X;
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X)
                     },
                     ExprType::AbsoluteX(_) => {
@@ -591,6 +597,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         } else {
                             self.flags = FlagsState::X;
                         }
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X)
                     },
                     ExprType::AbsoluteY(variable) => {
@@ -609,6 +616,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             self.asm(LDX, right, pos, high_byte)?;
                             self.flags = FlagsState::X; 
                         }
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X)
                     },
                     ExprType::A(_) => {
@@ -630,6 +638,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         } else {
                             self.flags = FlagsState::X;
                         }
+                        self.carry_flag_ok = false;
                         Ok(ExprType::X)
                     },
                     ExprType::Nothing => unreachable!(),
@@ -641,17 +650,20 @@ impl<'a, 'b> GeneratorState<'a> {
                     ExprType::Immediate(_) | ExprType::AbsoluteX(_) => {
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y; 
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y) 
                     },
                     ExprType::Tmp(_) => {
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y; 
                         self.tmp_in_use = false;
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y) 
                     },
                     ExprType::Absolute(_, _ , _) => {
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y;
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y)
                     },
                     ExprType::AbsoluteY(_) => {
@@ -664,6 +676,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         } else {
                             self.flags = FlagsState::Y;
                         }
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y)
                     },
                     ExprType::A(_)=> {
@@ -682,10 +695,12 @@ impl<'a, 'b> GeneratorState<'a> {
                         } else {
                             self.flags = FlagsState::Y;
                         }
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y)
                     },
                     ExprType::Y => {
                         self.flags = FlagsState::Y;
+                        self.carry_flag_ok = false;
                         Ok(ExprType::Y)
                     },
                     ExprType::Nothing => unreachable!(),
@@ -712,6 +727,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     }
                                     self.flags = FlagsState::Unknown;
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::X)
                             },
                             ExprType::AbsoluteX(_) => {
@@ -724,6 +740,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 } else {
                                     self.flags = FlagsState::X;
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::X)
                             },
                             ExprType::AbsoluteY(variable) => {
@@ -741,6 +758,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.flags = FlagsState::X;
                                     }
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::X)
                             },
                             ExprType::A(_) => {
@@ -771,6 +789,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     }
                                     self.flags = FlagsState::Unknown;
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
                             },
                             ExprType::AbsoluteY(_) => {
@@ -783,6 +802,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 } else {
                                     self.flags = FlagsState::Y;
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
                             },
                             ExprType::AbsoluteX(variable) => {
@@ -800,6 +820,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.flags = FlagsState::Y;
                                     }
                                 }
+                                self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
                             },
                             ExprType::A(_) => {
@@ -820,6 +841,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) | ExprType::Immediate(_) | ExprType::Tmp(_) => {
                                 if self.acc_in_use { self.sasm(PHA)?; }
                                 signed = self.asm(LDA, right, pos, high_byte)?;
+                                self.carry_flag_ok = false;
                             },
                             ExprType::A(s) => {
                                 signed = *s;
@@ -846,7 +868,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.acc_in_use = true;
-                                self.flags = FlagsState::Unknown;
+                                self.flags = FlagsState::A;
                                 return Ok(ExprType::A(signed));
                             },
                             ExprType::Tmp(_) => {
@@ -861,6 +883,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         if acc_in_use {
                             self.sasm(PLA)?;
                             self.flags = FlagsState::Unknown;
+                            self.carry_flag_ok = false;
                         }
                         Ok(*left)
                     }
@@ -986,12 +1009,14 @@ impl<'a, 'b> GeneratorState<'a> {
                 if !high_byte {
                     self.sasm(CLC)?;
                 }
+                self.carry_flag_ok = true;
                 ADC
             },
             Operation::Sub(_) => {
                 if !high_byte {
                     self.sasm(SEC)?;
                 }
+                self.carry_flag_ok = true;
                 SBC
             },
             Operation::And(_) => {
@@ -1042,6 +1067,7 @@ impl<'a, 'b> GeneratorState<'a> {
             }
             self.tmp_in_use = true;
             self.flags = FlagsState::Unknown;
+            self.carry_flag_ok = false;
             Ok(ExprType::Tmp(signed))
         } else {
             self.acc_in_use = true;
@@ -1958,7 +1984,11 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
                                 },
                                 _ => unreachable!(),
                             };
-                            return self.generate_branch_instruction_alt(&operator, signed, label);
+                            if self.carry_flag_ok {
+                                return self.generate_branch_instruction(&operator, signed, label);
+                            } else {
+                                return self.generate_branch_instruction_alt(&operator, signed, label);
+                            }
                         } 
                     }
                 } 
@@ -1968,6 +1998,7 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
         // Compare instruction
         let signed;
         let cmp;
+        self.carry_flag_ok = false;
         match left {
             ExprType::Absolute(a, eight_bits, b) => {
                 if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }

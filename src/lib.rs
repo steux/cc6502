@@ -230,6 +230,28 @@ mod tests {
     }
     
     #[test]
+    fn if_test7() {
+        let args = sargs(1);
+        let input = "char i, j, k; void main() { i = j + k; if (i < 0) i = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBCS .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+    }
+    
+    #[test]
+    fn if_test8() {
+        let args = sargs(1);
+        let input = "char i, j, k; void main() { i = j + k; if (i >= 0) i = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBCC .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+    }
+    
+    #[test]
     fn not_test() {
         let args = sargs(1);
         let input = "void main() { X = 0; Y = !X; }";
