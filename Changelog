@@ -1,4 +1,5 @@
-v0.3.5 (4/15/2023) :
+v0.3.5 (4/16/2023) :
+    - Shortened included C comments
     - Even better optimization for branching (added carry_flag_ok flag)
 
 v0.3.4 (4/13/2023) :

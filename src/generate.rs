@@ -21,6 +21,7 @@
 use std::collections::HashMap;
 use log::{debug, info};
 use std::io::Write;
+use regex::Regex;
 
 use crate::error::Error;
 use crate::compile::*;
@@ -63,6 +64,7 @@ pub struct GeneratorState<'a> {
     acc_in_use: bool,
     tmp_in_use: bool,
     insert_code: bool,
+    whitespaces_regex: Regex,
     deferred_plusplus: Vec<(ExprType<'a>, usize, bool)>,
     pub current_bank: u32,
     pub functions_code: HashMap<String, AssemblyCode>,
@@ -89,6 +91,7 @@ impl<'a, 'b> GeneratorState<'a> {
             acc_in_use: false,
             tmp_in_use: false,
             insert_code,
+            whitespaces_regex: Regex::new(r"\s+").unwrap(),
             deferred_plusplus: Vec::new(),
             current_bank: 0,
             functions_code: HashMap::new(),
@@ -2529,7 +2532,16 @@ fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprT
             let line_to_be_written = included_source_code.map(|line| line.to_string());
             // debug!("{:?}, {}, {}", line_to_be_written, self.last_included_position, self.last_included_line_number);
             if let Some(l) = line_to_be_written {
-                self.comment(&l)?; // Should include the '\n'
+                // Replace series of whitespaces by a single whitespace
+                let mut lx = self.whitespaces_regex.replace_all(&l, " ");
+                if lx.len() > 256 {
+                    let lxx = lx.to_mut();
+                    lxx.truncate(256);
+                    lxx.push_str("...\n");
+                    self.comment(&lxx)?; // Should include the '\n'
+                } else { 
+                    self.comment(&lx)?; // Should include the '\n'
+                }
             }
         }
 
