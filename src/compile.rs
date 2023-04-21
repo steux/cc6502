@@ -727,7 +727,11 @@ impl<'a> CompilerState<'a> {
                                         if var_type == VariableType::CharPtr || var_type == VariableType::ShortPtr {
                                             let mut v = Vec::new();
                                             for pxx in px.into_inner() {
-                                                v.push(self.parse_calc(pxx.into_inner())?);
+                                                if pxx.as_rule() == Rule::calc_expr {
+                                                    v.push(self.parse_calc(pxx.into_inner())?);
+                                                } else {
+                                                    return Err(self.syntax_error(&format!("Expecting constant literal, found {}", pxx.as_str() ), start));
+                                                }
                                             }
                                             if let Some(s) = size {
                                                 if s != v.len() {
