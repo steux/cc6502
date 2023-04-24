@@ -18,6 +18,8 @@
     Contact info: bruno.steux@gmail.com
 */
 
+// TODO: Better process immediate values with operators
+
 use std::collections::HashMap;
 use log::{debug, info};
 use std::io::Write;
@@ -1472,7 +1474,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
     {
         if self.acc_in_use {
             self.sasm(PHA)?; 

@@ -1,4 +1,6 @@
-v0.3.6 :
+v0.4.0 (4/24/2023) :
+    - Changed out.a default output file name to classical a.out
+    - Added -S option for assembler output only
     - Enhanced error reporting in case of syntax error in array definitions
 
 v0.3.5 (4/16/2023) :

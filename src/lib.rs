@@ -54,7 +54,7 @@ pub struct Args {
     include_directories: Vec<String>,
 
     /// Output file name
-    #[arg(short, long, default_value="out.a")]
+    #[arg(short, long, default_value="a.out")]
     pub output: String,
 
     /// Insert C code as comments
@@ -68,6 +68,10 @@ pub struct Args {
     /// Set char signedness to unsigned (default)
     #[arg(long("funsigned_char"), default_value = "true")]
     unsigned_chars: bool,
+
+    /// Stop after the stage of compilation proper; do not assemble 
+    #[arg(short='S', default_value="false")]
+    pub assembler_output: bool,
 
     /// Print compiler version
     #[arg(long, default_value = "false")]
@@ -94,6 +98,7 @@ mod tests {
             signed_chars: false,
             unsigned_chars: true,
             version: false,
+            assembler_output: true
         }
     }
 
