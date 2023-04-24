@@ -274,7 +274,10 @@ pub fn process<I: BufRead, O: Write>(
 
         // Process splices by removing them...
         loop {
-            if buf.ends_with("\\\n") {
+            if buf.ends_with("\\\n") || buf.ends_with("\\\r\n") {
+                if buf.ends_with("\\\r\n") {
+                    buf.pop();
+                }
                 buf.pop();
                 buf.pop();
                 let mut buf2 = String::new();
