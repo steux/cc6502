@@ -1,5 +1,7 @@
-v0.4.0 (4/24/2023) :
+v0.4.1 (4/24/2023) :
     - Corrected a bug with splices processing under windows
+
+v0.4.0 (4/24/2023) :
     - Changed out.a default output file name to classical a.out
     - Added -S option for assembler output only
     - Enhanced error reporting in case of syntax error in array definitions
