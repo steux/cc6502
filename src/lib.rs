@@ -73,6 +73,10 @@ pub struct Args {
     #[arg(short='S', default_value="false")]
     pub assembler_output: bool,
 
+    /// Generate debug information 
+    #[arg(short='g', long, default_value="false")]
+    pub debug: bool,
+
     /// Print compiler version
     #[arg(long, default_value = "false")]
     pub version: bool
@@ -98,7 +102,8 @@ mod tests {
             signed_chars: false,
             unsigned_chars: true,
             version: false,
-            assembler_output: true
+            assembler_output: true,
+            debug: false,
         }
     }
 

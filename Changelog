@@ -1,3 +1,6 @@
+v0.5.0 (4/29/2023) :
+    - Added -g debug flag
+
 v0.4.1 (4/24/2023) :
     - Corrected a bug with splices processing under windows
 
