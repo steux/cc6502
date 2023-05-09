@@ -2164,12 +2164,21 @@ impl<'a, 'b> GeneratorState<'a> {
                         Operation::Lte => true,
                         Operation::Land => {
                             if negate {
-                                self.generate_condition(lhs, pos, true, label, false)?;
+                                let cond = self.generate_condition(lhs, pos, true, label, immediate_special)?;
+                                if let Some(a) = cond {
+                                    if a { return Ok(Some(true)) }
+                                    return self.generate_condition(rhs, pos, true, label, immediate_special);
+                                }
                                 return self.generate_condition(rhs, pos, true, label, false);
                             } else {
                                 let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
                                 self.local_label_counter_if += 1;
-                                self.generate_condition(lhs, pos, true, &ifstart_label, false)?;
+                                let cond = self.generate_condition(lhs, pos, true, &ifstart_label, immediate_special)?;
+                                //debug!("left = {:?}", cond);
+                                if let Some(a) = cond {
+                                    if a { return Ok(Some(false)) }
+                                    return self.generate_condition(rhs, pos, false, label, immediate_special);
+                                }
                                 self.generate_condition(rhs, pos, false, label, false)?;
                                 self.label(&ifstart_label)?;
                                 return Ok(None);
@@ -2179,12 +2188,21 @@ impl<'a, 'b> GeneratorState<'a> {
                             if negate {
                                 let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
                                 self.local_label_counter_if += 1;
-                                self.generate_condition(lhs, pos, false, &ifstart_label, false)?;
+                                let cond = self.generate_condition(lhs, pos, false, &ifstart_label, immediate_special)?;
+                                //debug!("left = {:?}", cond);
+                                if let Some(a) = cond {
+                                    if a { return Ok(Some(false)); }
+                                    return self.generate_condition(rhs, pos, true, label, immediate_special);
+                                }
                                 self.generate_condition(rhs, pos, true, label, false)?;
                                 self.label(&ifstart_label)?;
                                 return Ok(None);
                             } else {
-                                self.generate_condition(lhs, pos, false, label, false)?;
+                                let cond = self.generate_condition(lhs, pos, false, label, immediate_special)?;
+                                if let Some(a) = cond {
+                                    if a { return Ok(Some(true)) }
+                                    return self.generate_condition(rhs, pos, false, label, immediate_special);
+                                }
                                 return self.generate_condition(rhs, pos, false, label, false);
                             }
                         },

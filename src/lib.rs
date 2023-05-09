@@ -680,4 +680,73 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDX #1\n\tLDY #0"));
     }
+    
+    #[test]
+    fn cond_expr_immediate_test3() {
+        let args = sargs(1);
+        let input = "void main() { X = 0 && Y; Y = 1 && 0;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #0\n\tLDY #0"));
+    }
+    
+    #[test]
+    fn cond_expr_immediate_test4() {
+        let args = sargs(1);
+        let input = "void main() { X = Y && 1; Y = X && 0;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        // Far from optimal, but the result if correct
+        assert!(result.contains("CPY #0\n\tBEQ .ifstart1\n\tJMP .else1\n.ifstart1\n\tLDA #0\n\tJMP .ifend1\n.else1\n\tLDA #1\n.ifend1\n\tTAX\n\tBEQ .ifstart3\n.ifstart3\n\tLDA #0\n\tJMP .ifend3\n.else3\n\tLDA #1\n.ifend3\n\tTAY"));
+    }
+    
+    #[test]
+    fn cond_expr_immediate_test5() {
+        let args = sargs(1);
+        let input = "void main() { X = 0 || Y; Y = 1 || 0;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("CPY #0\n\tBNE .else1\n\tLDA #0\n\tJMP .ifend1\n.else1\n\tLDA #1\n.ifend1\n\tTAX\n\tLDY #1"));
+    }
+    
+    #[test]
+    fn cond_expr_immediate_test6() {
+        let args = sargs(1);
+        let input = "void main() { X = Y || 1; Y = X || 0;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        // Far from optimal, but the result if correct
+        assert!(result.contains("CPY #0\n\tBNE .else1\n\tJMP .else1\n\tLDA #0\n\tJMP .ifend1\n.else1\n\tLDA #1\n.ifend1\n\tTAX\n\tBNE .else2\n\tLDA #0\n\tJMP .ifend2\n.else2\n\tLDA #1\n.ifend2\n\tTAY"));
+    }
+    
+    #[test]
+    fn ternary_immediate_test3() {
+        let args = sargs(1);
+        let input = "char i; void main() { X = (0 && 1)?2:3; Y = (1 && i)?3:4; X = (1 && 0)?2:3;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #3\n\tLDA i\n\tBEQ .else2\n\tLDA #3\n\tJMP .ifend2\n.else2\n\tLDA #4\n.ifend2\n\tTAY\n\tLDX #3"));
+    }
+    
+    #[test]
+    fn ternary_immediate_test4() {
+        let args = sargs(1);
+        let input = "char i; void main() { X = (0 || 1)?2:3; Y = (1 || i)?3:4; X = (0 || 0)?2:3;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #2\n\tLDY #3\n\tLDX #3"));
+    }
+    
 }
