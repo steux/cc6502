@@ -637,7 +637,7 @@ impl<'a> CompilerState<'a> {
                                 signed = p.as_str().eq("signed");
                                 signedness_specified = true;
                             },
-                            Rule::var_simple_type => if p.as_str().eq("short") {
+                            Rule::var_simple_type => if p.as_str().starts_with("short") || p.as_str().starts_with("int") {
                                 var_type_ex = VariableType::Short;
                                 if !signedness_specified { signed = true; }
                             },

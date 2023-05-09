@@ -18,8 +18,6 @@
     Contact info: bruno.steux@gmail.com
 */
 
-// TODO: Better process immediate values with operators
-
 use std::collections::HashMap;
 use log::{debug, info};
 use std::io::Write;

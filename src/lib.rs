@@ -18,6 +18,8 @@
     Contact info: bruno.steux@gmail.com
 */
 
+// TODO: Better process immediate values with operators
+
 mod cpp;
 pub mod error;
 pub mod compile;
@@ -625,4 +627,16 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains(".dowhile1\n\tDEY\n\tBPL .dowhile1"));
     }
+    
+    #[test]
+    fn sixteen_bits_test3() {
+        let args = sargs(1);
+        let input = "short i; short int j; int k; void main() { i = 1; j = 1; k = i + j; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
+    }
+    
 }
