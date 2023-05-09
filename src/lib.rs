@@ -728,6 +728,18 @@ char i; void main() { i = one; }";
     }
     
     #[test]
+    fn cond_expr_immediate_test7() {
+        let args = sargs(1);
+        let input = "void main() { X = 0 || 0; Y = 0 || X;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        // Far from optimal, but the result if correct
+        assert!(result.contains("LDX #0\n\tLDA #0\n\tJMP .ifend2\n.else2\n\tLDA #1\n.ifend2\n\tTAY"));
+    }
+    
+    #[test]
     fn ternary_immediate_test3() {
         let args = sargs(1);
         let input = "char i; void main() { X = (0 && 1)?2:3; Y = (1 && i)?3:4; X = (1 && 0)?2:3;}";
