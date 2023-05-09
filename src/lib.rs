@@ -18,8 +18,6 @@
     Contact info: bruno.steux@gmail.com
 */
 
-// TODO: Better process immediate values with operators
-
 mod cpp;
 pub mod error;
 pub mod compile;
@@ -639,4 +637,47 @@ char i; void main() { i = one; }";
         assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
     }
     
+    #[test]
+    fn ternary_immediate_test1() {
+        let args = sargs(1);
+        let input = "void main() { X = (1 > 0)?2:3; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #2"));
+    }
+    
+    #[test]
+    fn ternary_immediate_test2() {
+        let args = sargs(1);
+        let input = "void main() { X = (0)?2:3; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #3"));
+    }
+    
+    #[test]
+    fn cond_expr_immediate_test1() {
+        let args = sargs(1);
+        let input = "void main() { X = 0 == 1; Y = 1 > 0;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #0\n\tLDY #1"));
+    }
+    
+    #[test]
+    fn cond_expr_immediate_test2() {
+        let args = sargs(1);
+        let input = "void main() { X = !(0 == 1); Y = !(1 > 0);}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #1\n\tLDY #0"));
+    }
 }

@@ -1299,7 +1299,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.local_label_counter_if += 1;
                         let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                         let else_label = format!(".else{}", self.local_label_counter_if);
-                        self.generate_condition(condition, pos, true, &else_label)?;
+                        self.generate_condition(condition, pos, true, &else_label, false)?;
                         let left = self.generate_expr(lhs, pos, false)?;
                         let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
                         self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
@@ -1319,20 +1319,28 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.local_label_counter_if += 1;
                         let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                         let else_label = format!(".else{}", self.local_label_counter_if);
-                        self.generate_condition(condition, pos, true, &else_label)?;
-                        let left = self.generate_expr(lhs, pos, false)?;
-                        let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
-                        self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
-                        self.label(&else_label)?;
-                        self.acc_in_use = false;
-                        let right = self.generate_expr(rhs, pos, false)?;
-                        let ra = self.generate_assign(&ExprType::A(false), &right, pos, false)?;
-                        self.label(&ifend_label)?;
-                        self.acc_in_use = true;
-                        if la != ra {
-                            return Err(self.compiler_state.syntax_error("Different alternative types in ?: expression", pos))
+                        let cond = self.generate_condition(condition, pos, true, &else_label, true)?;
+                        if let Some(b) = cond {
+                            if b {
+                                return Ok(self.generate_expr(rhs, pos, false)?);
+                            } else {
+                                return Ok(self.generate_expr(lhs, pos, false)?);
+                            }
+                        } else {
+                            let left = self.generate_expr(lhs, pos, false)?;
+                            let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
+                            self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                            self.label(&else_label)?;
+                            self.acc_in_use = false;
+                            let right = self.generate_expr(rhs, pos, false)?;
+                            let ra = self.generate_assign(&ExprType::A(false), &right, pos, false)?;
+                            self.label(&ifend_label)?;
+                            self.acc_in_use = true;
+                            if la != ra {
+                                return Err(self.compiler_state.syntax_error("Different alternative types in ?: expression", pos))
+                            }
+                            Ok(la)
                         }
-                        Ok(la)
                     }
                 } else {
                     Err(self.compiler_state.syntax_error("Missing alternatives in ?: expression", pos))
@@ -1482,7 +1490,7 @@ impl<'a, 'b> GeneratorState<'a> {
             self.local_label_counter_if += 1;
             let ifend_label = format!(".ifend{}", self.local_label_counter_if);
             let else_label = format!(".else{}", self.local_label_counter_if);
-            self.generate_condition(expr, pos, false, &else_label)?;
+            self.generate_condition(expr, pos, false, &else_label, false)?;
             self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
             self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
             self.label(&else_label)?;
@@ -1496,14 +1504,18 @@ impl<'a, 'b> GeneratorState<'a> {
             self.local_label_counter_if += 1;
             let ifend_label = format!(".ifend{}", self.local_label_counter_if);
             let else_label = format!(".else{}", self.local_label_counter_if);
-            self.generate_condition(expr, pos, false, &else_label)?;
-            self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
-            self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
-            self.label(&else_label)?;
-            self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
-            self.label(&ifend_label)?;
-            self.acc_in_use = true;
-            Ok(ExprType::A(false))
+            let cond = self.generate_condition(expr, pos, false, &else_label, true)?;
+            if let Some(b) = cond {
+                Ok(ExprType::Immediate(if b {1} else {0}))
+            } else {
+                self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
+                self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                self.label(&else_label)?;
+                self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
+                self.label(&ifend_label)?;
+                self.acc_in_use = true;
+                Ok(ExprType::A(false))
+            }
         }
     }
 
@@ -1524,7 +1536,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.local_label_counter_if += 1;
                     let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                     let else_label = format!(".else{}", self.local_label_counter_if);
-                    self.generate_condition(expr, pos, false, &else_label)?;
+                    self.generate_condition(expr, pos, false, &else_label, false)?;
                     self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
                     self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
                     self.label(&else_label)?;
@@ -1537,14 +1549,18 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.local_label_counter_if += 1;
                     let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                     let else_label = format!(".else{}", self.local_label_counter_if);
-                    self.generate_condition(expr, pos, false, &else_label)?;
-                    self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
-                    self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
-                    self.label(&else_label)?;
-                    self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
-                    self.label(&ifend_label)?;
-                    self.acc_in_use = true;
-                    Ok(ExprType::A(false))
+                    let cond = self.generate_condition(expr, pos, false, &else_label, true)?;
+                    if let Some(b) = cond {
+                        Ok(ExprType::Immediate(if b {0} else {1}))
+                    } else {
+                        self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
+                        self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                        self.label(&else_label)?;
+                        self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
+                        self.label(&ifend_label)?;
+                        self.acc_in_use = true;
+                        Ok(ExprType::A(false))
+                    }
                 }
             }
         }
@@ -2134,7 +2150,7 @@ impl<'a, 'b> GeneratorState<'a> {
         self.generate_branch_instruction(&operator, signed, label)
     }
 
-    fn generate_condition(&mut self, condition: &'a Expr<'a>, pos: usize, negate: bool, label: &str) -> Result<(), Error>
+    fn generate_condition(&mut self, condition: &'a Expr<'a>, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
     {
         //debug!("Condition: {:?}", condition);
         match condition {
@@ -2148,39 +2164,56 @@ impl<'a, 'b> GeneratorState<'a> {
                         Operation::Lte => true,
                         Operation::Land => {
                             if negate {
-                                self.generate_condition(lhs, pos, true, label)?;
-                                return self.generate_condition(rhs, pos, true, label);
+                                self.generate_condition(lhs, pos, true, label, false)?;
+                                return self.generate_condition(rhs, pos, true, label, false);
                             } else {
                                 let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
                                 self.local_label_counter_if += 1;
-                                self.generate_condition(lhs, pos, true, &ifstart_label)?;
-                                self.generate_condition(rhs, pos, false, label)?;
+                                self.generate_condition(lhs, pos, true, &ifstart_label, false)?;
+                                self.generate_condition(rhs, pos, false, label, false)?;
                                 self.label(&ifstart_label)?;
-                                return Ok(());
+                                return Ok(None);
                             }
                         },
                         Operation::Lor => {
                             if negate {
                                 let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
                                 self.local_label_counter_if += 1;
-                                self.generate_condition(lhs, pos, false, &ifstart_label)?;
-                                self.generate_condition(rhs, pos, true, label)?;
+                                self.generate_condition(lhs, pos, false, &ifstart_label, false)?;
+                                self.generate_condition(rhs, pos, true, label, false)?;
                                 self.label(&ifstart_label)?;
-                                return Ok(());
+                                return Ok(None);
                             } else {
-                                self.generate_condition(lhs, pos, false, label)?;
-                                return self.generate_condition(rhs, pos, false, label);
+                                self.generate_condition(lhs, pos, false, label, false)?;
+                                return self.generate_condition(rhs, pos, false, label, false);
                             }
                         },
                         _ => false,
                 } {
                     let l = self.generate_expr(lhs, pos, false)?;
                     let r = self.generate_expr(rhs, pos, false)?;
-                    return self.generate_condition_ex(&l, op, &r, pos, negate, label);
+                    if immediate_special {
+                        if let ExprType::Immediate(a) = l {
+                            if let ExprType::Immediate(b) = r {
+                                match op {
+                                    Operation::Eq => return Ok(Some(if a == b { !negate } else { negate })),
+                                    Operation::Neq => return Ok(Some(if a != b { !negate } else { negate })),
+                                    Operation::Gt => return Ok(Some(if a > b { !negate } else { negate })),
+                                    Operation::Gte => return Ok(Some(if a >= b { !negate } else { negate })),
+                                    Operation::Lt => return Ok(Some(if a < b { !negate } else { negate })),
+                                    Operation::Lte => return Ok(Some(if a <= b { !negate } else { negate })),
+                                    _ => unreachable!()
+
+                                }
+                            }
+                        }
+                    }
+                    self.generate_condition_ex(&l, op, &r, pos, negate, label)?;
+                    return Ok(None);
                 }
             },
             Expr::Not(expr) => {
-                return self.generate_condition(expr, pos, !negate, label); 
+                return self.generate_condition(expr, pos, !negate, label, immediate_special); 
             },
             _ => ()
         };
@@ -2195,11 +2228,14 @@ impl<'a, 'b> GeneratorState<'a> {
             } else {
                 self.asm(BNE, &ExprType::Label(label), pos, false)?;
             }
-            Ok(())
+            Ok(None)
         } else {
             self.flags = FlagsState::Unknown;
             match expr {
                 ExprType::Immediate(v) => {
+                    if immediate_special {
+                        return Ok(Some(if v != 0 { !negate } else { negate }));
+                    }
                     if v != 0 {
                         if !negate {
                             self.asm(JMP, &ExprType::Label(label), pos, false)?;
@@ -2208,7 +2244,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.asm(JMP, &ExprType::Label(label), pos, false)?;
                     }
                     self.flags = FlagsState::Unknown;
-                    return Ok(());
+                    return Ok(None);
                 },
                 ExprType::Absolute(a, eight_bits, b) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
@@ -2252,7 +2288,7 @@ impl<'a, 'b> GeneratorState<'a> {
             } else {
                 self.asm(BNE, &ExprType::Label(label), 0, false)?;
             }
-            Ok(())
+            Ok(None)
         }
     }
 
@@ -2264,13 +2300,13 @@ impl<'a, 'b> GeneratorState<'a> {
         let forend_label = format!(".forend{}", self.local_label_counter_for);
         self.generate_expr(init, pos, false)?;
         self.loops.push((forupdate_label.clone(), forend_label.clone(), false));
-        self.generate_condition(condition, pos, true, &forend_label)?;
+        self.generate_condition(condition, pos, true, &forend_label, false)?;
         self.label(&for_label)?;
         self.generate_statement(body)?;
         self.label(&forupdate_label)?;
         self.generate_expr(update, pos, false)?;
         self.purge_deferred_plusplus()?;
-        self.generate_condition(condition, pos, false, &for_label)?;
+        self.generate_condition(condition, pos, false, &for_label, false)?;
         self.label(&forend_label)?;
         self.loops.pop();
         Ok(())
@@ -2290,7 +2326,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 Some((_, bl, _)) => bl.clone(),
                             }
                         };
-                        self.generate_condition(condition, pos, false, &brk_label)?;
+                        self.generate_condition(condition, pos, false, &brk_label, false)?;
                     },
                     Statement::Continue => {
                         let cont_label = {
@@ -2299,11 +2335,11 @@ impl<'a, 'b> GeneratorState<'a> {
                                 Some((cl, _, _)) => cl.clone(),
                             }
                         };
-                        self.generate_condition(condition, pos, false, &cont_label)?;
+                        self.generate_condition(condition, pos, false, &cont_label, false)?;
                         self.loops.last_mut().unwrap().2 = true;
                     },
                     _ => {
-                        self.generate_condition(condition, pos, true, &ifend_label)?;
+                        self.generate_condition(condition, pos, true, &ifend_label, false)?;
                         self.generate_statement(body)?;
                         self.label(&ifend_label)?;
                     }
@@ -2312,7 +2348,7 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             Some(else_statement) => {
                 let else_label = format!(".else{}", self.local_label_counter_if);
-                self.generate_condition(condition, pos, true, &else_label)?;
+                self.generate_condition(condition, pos, true, &else_label, false)?;
                 let saved_flags = self.flags;
                 self.generate_statement(body)?;
                 self.asm(JMP, &ExprType::Label(&ifend_label), 0, false)?;
@@ -2383,7 +2419,7 @@ impl<'a, 'b> GeneratorState<'a> {
             let whileend_label = format!(".whileend{}", self.local_label_counter_while);
             self.loops.push((while_label.clone(), whileend_label.clone(), false));
             self.label(&while_label)?;
-            self.generate_condition(condition, pos, true, &whileend_label)?;
+            self.generate_condition(condition, pos, true, &whileend_label, false)?;
             self.generate_statement(body)?;
             self.asm(JMP, &ExprType::Label(&while_label), pos, false)?;
             self.label(&whileend_label)?;
@@ -2404,7 +2440,7 @@ impl<'a, 'b> GeneratorState<'a> {
         if self.loops.last().unwrap().2 {
             self.label(&dowhilecondition_label)?;
         }
-        self.generate_condition(condition, pos, false, &dowhile_label)?;
+        self.generate_condition(condition, pos, false, &dowhile_label, false)?;
         self.label(&dowhileend_label)?;
         self.loops.pop();
         Ok(())

@@ -1,4 +1,5 @@
 v0.5.1 (5/09/2023) :
+    - Added better support for immediate expression results 
     - Added int type (short int)
 
 v0.5.0 (4/29/2023) :
