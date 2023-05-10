@@ -977,6 +977,10 @@ fn parse_int(p: Pair<Rule>) -> i32
         Rule::decimal => p.as_str().parse::<i32>().unwrap(),
         Rule::hexadecimal => i32::from_str_radix(&p.as_str()[2..], 16).unwrap(),
         Rule::octal => i32::from_str_radix(p.as_str(), 8).unwrap(),
+        Rule::quoted_character => {
+            let s = compile_quoted_string(p.into_inner().next().unwrap().as_str());
+            s.chars().next().unwrap() as i32
+        }
         _ => {
             unreachable!()
         }
