@@ -1012,7 +1012,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 if !high_byte {
                     self.sasm(CLC)?;
                 }
-                self.carry_flag_ok = true;
+                self.carry_flag_ok = false;
                 ADC
             },
             Operation::Sub(_) => {

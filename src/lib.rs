@@ -247,7 +247,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBCS .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBPL .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
     }
     
     #[test]
@@ -258,7 +258,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBCC .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBMI .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
     }
     
     #[test]
@@ -594,7 +594,7 @@ char i; void main() { i = one; }";
     }
 
     #[test]
-    fn for_test() {
+    fn for_test1() {
         let args = sargs(1);
         let input = "void main() { for (Y = 127; Y >= 0; Y--); }";
         let mut output = Vec::new();
