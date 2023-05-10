@@ -594,6 +594,26 @@ impl<'a> CompilerState<'a> {
                 Rule::xor => lhs.unwrap() ^ rhs.unwrap(),
                 Rule::brs => lhs.unwrap() >> rhs.unwrap(),
                 Rule::bls => lhs.unwrap() << rhs.unwrap(),
+                Rule::land => if lhs.unwrap() != 0 && rhs.unwrap() != 0 { 1 } else { 0 },
+                Rule::lor => if lhs.unwrap() != 0 || rhs.unwrap() != 0 { 1 } else { 0 },
+                Rule::gt => if lhs.unwrap() > rhs.unwrap() { 1 } else { 0 },
+                Rule::gte => if lhs.unwrap() >= rhs.unwrap() { 1 } else { 0 },
+                Rule::lt => if lhs.unwrap() < rhs.unwrap() { 1 } else { 0 },
+                Rule::lte => if lhs.unwrap() <= rhs.unwrap() { 1 } else { 0 },
+                Rule::eq => if lhs.unwrap() == rhs.unwrap() { 1 } else { 0 },
+                Rule::neq => if lhs.unwrap() != rhs.unwrap() { 1 } else { 0 },
+                Rule::ternary_cond1 => {
+                    let l = lhs.unwrap();
+                    let r = rhs.unwrap();
+                    debug!("t1: left: {} right: {}", l, r);
+                    if l != 0 { r } else { 0x7eaddead }
+                },
+                Rule::ternary_cond2 => { 
+                    let l = lhs.unwrap();
+                    let r = rhs.unwrap();
+                    debug!("t2: left: {} right: {}", l, r); 
+                    if l == 0x7eaddead { r } else { l } 
+                },
                 rule => unreachable!("parse_calc expected infix operation, found {:?}", rule),
             };
             Ok(res)
@@ -1038,11 +1058,14 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
    
     let calculator = 
         PrattParser::new()
+        .op(Op::infix(Rule::ternary_cond2, Assoc::Right))
+        .op(Op::infix(Rule::ternary_cond1, Assoc::Right))
         .op(Op::infix(Rule::lor, Assoc::Left))
         .op(Op::infix(Rule::land, Assoc::Left))
         .op(Op::infix(Rule::or, Assoc::Left))
         .op(Op::infix(Rule::xor, Assoc::Left))
         .op(Op::infix(Rule::and, Assoc::Left))
+        .op(Op::infix(Rule::eq, Assoc::Left) | Op::infix(Rule::neq, Assoc::Left) | Op::infix(Rule::gt, Assoc::Left) | Op::infix(Rule::gte, Assoc::Left) | Op::infix(Rule::lt, Assoc::Left) | Op::infix(Rule::lte, Assoc::Left))
         .op(Op::infix(Rule::brs, Assoc::Left) | Op::infix(Rule::bls, Assoc::Left))
         .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
         .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
@@ -1051,7 +1074,10 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
     // Prepare the context
     let mut context = cpp::Context::new(&args.input);
     context.include_directories = args.include_directories.clone();
+#[cfg(feature = "atari2600")]
     context.define("__ATARI2600__", "1");
+#[cfg(feature = "atari7800")]
+    context.define("__ATARI7800__", "1");
     for i in &args.defines {
         let mut s = i.splitn(2, '=');
         let def = s.next().unwrap();

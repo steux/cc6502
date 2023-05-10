@@ -761,4 +761,25 @@ char i; void main() { i = one; }";
         assert!(result.contains("LDX #2\n\tLDY #3\n\tLDX #3"));
     }
     
+    #[test]
+    fn ternary_immediate_test5() {
+        let args = sargs(1);
+        let input = "char array[(1 == 0)?2:3]; void main() { X = sizeof(array);}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #3"));
+    }
+    
+    #[test]
+    fn sizeof_test() {
+        let args = sargs(1);
+        let input = "char arr1[3]; char *arr2[3]; const char *ptr[] = { arr1 }; void main() { X = sizeof(arr1); Y = sizeof(arr2); Y = sizeof(ptr); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #3\n\tLDY #6\n\tLDY #2"));
+    }
 }

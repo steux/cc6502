@@ -1604,17 +1604,19 @@ impl<'a, 'b> GeneratorState<'a> {
         match expr {
             Expr::Identifier((var, _)) => {
                 let v = self.compiler_state.get_variable(var);
-                if v.var_type == VariableType::CharPtr {
-                    match &v.def {
-                        VariableDefinition::Array(s) => Ok(ExprType::Immediate(s.len() as i32)),
-                        _ => Ok(ExprType::Immediate(2)),
-                    } 
-                } else if v.var_type == VariableType::Char {
-                    Ok(ExprType::Immediate(1))
-                } else if v.var_type == VariableType::Short {
-                    Ok(ExprType::Immediate(2))
-                } else {
-                    Err(self.compiler_state.syntax_error("Sizeof only works on variables", pos))
+                match v.var_type {
+                    VariableType::CharPtr => {
+                        if v.var_const {
+                            Ok(ExprType::Immediate(v.size as i32))
+                        } else {
+                            Ok(ExprType::Immediate(2))
+                        }
+                    },
+                    VariableType::ShortPtr | VariableType::CharPtrPtr => {
+                        Ok(ExprType::Immediate((v.size  * 2) as i32))
+                    },
+                    VariableType::Char => Ok(ExprType::Immediate(1)),
+                    VariableType::Short => Ok(ExprType::Immediate(2)),
                 }
             },
             _ => Err(self.compiler_state.syntax_error("Sizeof only works on variables", pos)),

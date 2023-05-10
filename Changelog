@@ -1,4 +1,6 @@
 v0.5.1 (5/10/2023) :
+    - Fixed sizeof operator
+    - Added support for ternary expressions in declarations
     - Added quoted character support
     - Corrected a bug with carry flag
     - Added better support for immediate expression results 
