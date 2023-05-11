@@ -782,4 +782,16 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDX #3\n\tLDY #6\n\tLDY #2"));
     }
+    
+    #[test]
+    fn minusminus_statement_test() {
+        let args = sargs(1); 
+        let input = "char array[3]; void main() { array[--X] = Y; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("DEX\n\tSTY array,X"));
+    }
+    
 }
