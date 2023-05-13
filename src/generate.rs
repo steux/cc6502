@@ -2327,6 +2327,7 @@ impl<'a, 'b> GeneratorState<'a> {
         let forupdate_label = format!(".forupdate{}", self.local_label_counter_for);
         let forend_label = format!(".forend{}", self.local_label_counter_for);
         self.generate_expr(init, pos, false, false)?;
+        self.purge_deferred_plusplus()?;
         self.loops.push((forupdate_label.clone(), forend_label.clone(), false));
         self.generate_condition(condition, pos, true, &forend_label, false)?;
         self.label(&for_label)?;
