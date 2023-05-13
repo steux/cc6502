@@ -152,6 +152,28 @@ mod tests {
     }
     
     #[test]
+    fn plusplus_statement_test3() {
+        let args = sargs(1); 
+        let input = "short i, j; void main() { i = 0; j = ++i; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA i+1\n\tLDA i\n\tCLC\n\tADC #1\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1\n\tLDA i\n\tSTA j\n\tLDA i+1\n\tSTA j+1"));
+    }
+    
+    #[test]
+    fn plusplus_statement_test4() {
+        let args = sargs(1); 
+        let input = "short i; char *j; void main() { i = j[++Y]; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("INY\n\tLDA (j),Y\n\tSTA i\n\tLDA #0\n\tSTA i+1"));
+    }
+    
+    #[test]
     fn sixteen_bits_test1() {
         let args = sargs(1);
         let input = "short i, j, k; void main() { i = 1; j = 1; k = i + j; }";

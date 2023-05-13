@@ -1,4 +1,5 @@
-v0.5.1 (5/11/2023) :
+v0.5.1 (5/12/2023) :
+    - Fixed ++/-- with 16 bits operations
     - Fixed -- prefix operator
     - Fixed sizeof operator
     - Added support for ternary expressions in declarations

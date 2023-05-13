@@ -1300,12 +1300,12 @@ impl<'a, 'b> GeneratorState<'a> {
                         let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                         let else_label = format!(".else{}", self.local_label_counter_if);
                         self.generate_condition(condition, pos, true, &else_label, false)?;
-                        let left = self.generate_expr(lhs, pos, false)?;
+                        let left = self.generate_expr(lhs, pos, false, false)?;
                         let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
                         self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
                         self.label(&else_label)?;
                         self.acc_in_use = false;
-                        let right = self.generate_expr(rhs, pos, false)?;
+                        let right = self.generate_expr(rhs, pos, false, false)?;
                         let ra = self.generate_assign(&ExprType::A(false), &right, pos, false)?;
                         self.label(&ifend_label)?;
                         self.asm(STA, &ExprType::Tmp(false), pos, false)?;
@@ -1322,17 +1322,17 @@ impl<'a, 'b> GeneratorState<'a> {
                         let cond = self.generate_condition(condition, pos, true, &else_label, true)?;
                         if let Some(b) = cond {
                             if b {
-                                return Ok(self.generate_expr(rhs, pos, false)?);
+                                return Ok(self.generate_expr(rhs, pos, false, false)?);
                             } else {
-                                return Ok(self.generate_expr(lhs, pos, false)?);
+                                return Ok(self.generate_expr(lhs, pos, false, false)?);
                             }
                         } else {
-                            let left = self.generate_expr(lhs, pos, false)?;
+                            let left = self.generate_expr(lhs, pos, false, false)?;
                             let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
                             self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
                             self.label(&else_label)?;
                             self.acc_in_use = false;
-                            let right = self.generate_expr(rhs, pos, false)?;
+                            let right = self.generate_expr(rhs, pos, false, false)?;
                             let ra = self.generate_assign(&ExprType::A(false), &right, pos, false)?;
                             self.label(&ifend_label)?;
                             self.acc_in_use = true;
@@ -1474,7 +1474,7 @@ impl<'a, 'b> GeneratorState<'a> {
             Expr::Integer(i) => Ok(ExprType::Immediate(-*i)),
             _ => {
                 let left = ExprType::Immediate(0);
-                let right = self.generate_expr(expr, pos, false)?;
+                let right = self.generate_expr(expr, pos, false, false)?;
                 self.generate_arithm(&left, &Operation::Sub(false), &right, pos, false)
             }
         }
@@ -1571,7 +1571,7 @@ impl<'a, 'b> GeneratorState<'a> {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(!*i)),
             _ => { 
-                let left = self.generate_expr(expr, pos, false)?;
+                let left = self.generate_expr(expr, pos, false, false)?;
                 let right = ExprType::Immediate(0xff);
                 self.generate_arithm(&left, &Operation::Xor(false), &right, pos, false)
             },
@@ -1584,7 +1584,7 @@ impl<'a, 'b> GeneratorState<'a> {
             Expr::Identifier((var, sub)) => {
                 let v = self.compiler_state.get_variable(var);
                 if v.var_type == VariableType::CharPtr {
-                    let sub_output = self.generate_expr(sub, pos, false)?;
+                    let sub_output = self.generate_expr(sub, pos, false, false)?;
                     match sub_output {
                         ExprType::Nothing => {
                             Ok(ExprType::Absolute(var, true, 0))
@@ -1623,29 +1623,29 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_expr(&mut self, expr: &'a Expr<'a>, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+    fn generate_expr(&mut self, expr: &'a Expr<'a>, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType<'a>, Error>
     {
-        debug!("Expression: {:?}", expr);
+        debug!("Expression: {:?}, high_byte: {}", expr, high_byte);
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(*i)),
             Expr::BinOp {lhs, op, rhs} => {
                 match op {
                     Operation::Assign => {
-                        let left = self.generate_expr(lhs, pos, high_byte)?;
-                        let right = self.generate_expr(rhs, pos, high_byte)?;
+                        let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                        let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
                         let ret = self.generate_assign(&left, &right, pos, high_byte);
                         if !high_byte {
                             match left {
                                 ExprType::Absolute(_, eight_bits, _) =>  if !eight_bits {
-                                    let left = self.generate_expr(lhs, pos, true)?;
-                                    let right = self.generate_expr(rhs, pos, true)?;
+                                    let left = self.generate_expr(lhs, pos, true, true)?;
+                                    let right = self.generate_expr(rhs, pos, true, true)?;
                                     self.generate_assign(&left, &right, pos, true)?;
                                 },
                                 ExprType::AbsoluteX(variable) | ExprType::AbsoluteY(variable) => {
                                     let v = self.compiler_state.get_variable(variable);
                                     if v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtrPtr {
-                                        let left = self.generate_expr(lhs, pos, true)?;
-                                        let right = self.generate_expr(rhs, pos, true)?;
+                                        let left = self.generate_expr(lhs, pos, true, true)?;
+                                        let right = self.generate_expr(rhs, pos, true, true)?;
                                         self.generate_assign(&left, &right, pos, true)?;
                                     }
                                 },
@@ -1655,13 +1655,13 @@ impl<'a, 'b> GeneratorState<'a> {
                         ret
                     },
                     Operation::Add(false) | Operation::Sub(false) | Operation::And(false) | Operation::Or(false) | Operation::Xor(false) | Operation::Mul(false) | Operation::Div(false) => {
-                        let left = self.generate_expr(lhs, pos, high_byte)?;
-                        let right = self.generate_expr(rhs, pos, high_byte)?;
+                        let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                        let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
                         self.generate_arithm(&left, op, &right, pos, high_byte)
                     },
                     Operation::Add(true) | Operation::Sub(true) | Operation::And(true) | Operation::Or(true) | Operation::Xor(true) | Operation::Mul(true) | Operation::Div(true) => {
-                        let left = self.generate_expr(lhs, pos, high_byte)?;
-                        let right = self.generate_expr(rhs, pos, high_byte)?;
+                        let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                        let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
                         let newright = self.generate_arithm(&left, op, &right, pos, high_byte)?;
                         let ret = self.generate_assign(&left, &newright, pos, high_byte);
                         if !high_byte {
@@ -1669,8 +1669,8 @@ impl<'a, 'b> GeneratorState<'a> {
                                 ExprType::Absolute(variable, eight_bits, _) => {
                                     let v = self.compiler_state.get_variable(variable);
                                     if v.var_type == VariableType::Short || v.var_type == VariableType::ShortPtr || (v.var_type == VariableType::CharPtr && !eight_bits) {
-                                        let left = self.generate_expr(lhs, pos, true)?;
-                                        let right = self.generate_expr(rhs, pos, true)?;
+                                        let left = self.generate_expr(lhs, pos, true, true)?;
+                                        let right = self.generate_expr(rhs, pos, true, true)?;
                                         let newright = self.generate_arithm(&left, op, &right, pos, true)?;
                                         self.generate_assign(&left, &newright, pos, true)?;
                                     }
@@ -1678,8 +1678,8 @@ impl<'a, 'b> GeneratorState<'a> {
                                 ExprType::AbsoluteX(variable) | ExprType::AbsoluteY(variable) => {
                                     let v = self.compiler_state.get_variable(variable);
                                     if v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtrPtr {
-                                        let left = self.generate_expr(lhs, pos, true)?;
-                                        let right = self.generate_expr(rhs, pos, true)?;
+                                        let left = self.generate_expr(lhs, pos, true, true)?;
+                                        let right = self.generate_expr(rhs, pos, true, true)?;
                                         let newright = self.generate_arithm(&left, op, &right, pos, true)?;
                                         self.generate_assign(&left, &newright, pos, true)?;
                                     }
@@ -1691,24 +1691,24 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     Operation::Eq | Operation::Neq | Operation::Gt | Operation::Gte | Operation::Lt | Operation::Lte | Operation::Land | Operation::Lor => self.generate_expr_cond(expr, pos),
                     Operation::Bls(true) | Operation::Brs(true) => {
-                        let left = self.generate_expr(lhs, pos, false)?;
-                        let right = self.generate_expr(rhs,pos, false)?;
+                        let left = self.generate_expr(lhs, pos, false, false)?;
+                        let right = self.generate_expr(rhs,pos, false, false)?;
                         let newright = self.generate_shift(&left, op, &right, pos, high_byte)?;
                         self.generate_assign(&left, &newright, pos, false)
                     },
                     Operation::Bls(false) | Operation::Brs(false) => {
-                        let left = self.generate_expr(lhs, pos, false)?;
-                        let right = self.generate_expr(rhs, pos, false)?;
+                        let left = self.generate_expr(lhs, pos, false, false)?;
+                        let right = self.generate_expr(rhs, pos, false, false)?;
                         self.generate_shift(&left, op, &right, pos, high_byte)
                     },
                     Operation::TernaryCond1 => self.generate_ternary(lhs, rhs, pos),
                     Operation::TernaryCond2 => unreachable!(),
                     Operation::Comma => {
-                        self.generate_expr(lhs, pos, false)?;
+                        self.generate_expr(lhs, pos, false, false)?;
                         self.purge_deferred_plusplus()?;
                         self.acc_in_use = false;
                         self.tmp_in_use = false;
-                        self.generate_expr(rhs, pos, false)
+                        self.generate_expr(rhs, pos, false, false)
                     }
                 }
             },
@@ -1718,7 +1718,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     "Y" => Ok(ExprType::Y),
                     variable => {
                         let v = self.compiler_state.get_variable(variable);
-                        let sub_output = self.generate_expr(sub, pos, false)?;
+                        let sub_output = self.generate_expr(sub, pos, false, high_byte)?;
                         match sub_output {
                             ExprType::Nothing => if let VariableDefinition::Value(val) = &v.def {
                                 Ok(ExprType::Immediate(*val))
@@ -1766,23 +1766,31 @@ impl<'a, 'b> GeneratorState<'a> {
                 Ok(ExprType::Nothing)
             },
             Expr::MinusMinus(expr, false) => {
-                let expr_type = self.generate_expr(expr, pos, high_byte)?;
-                self.generate_plusplus(&expr_type, pos, false)?;
+                let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
+                if !second_time {
+                    self.generate_plusplus(&expr_type, pos, false)?;
+                }
                 Ok(expr_type)
             },
             Expr::PlusPlus(expr, false) => {
-                let expr_type = self.generate_expr(expr, pos, high_byte)?;
-                self.generate_plusplus(&expr_type, pos, true)?;
+                let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
+                if !second_time {
+                    self.generate_plusplus(&expr_type, pos, true)?;
+                }
                 Ok(expr_type)
             },
             Expr::MinusMinus(expr, true) => {
-                let expr_type = self.generate_expr(expr, pos, high_byte)?;
-                self.deferred_plusplus.push((expr_type, pos, false));
+                let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
+                if !second_time {
+                    self.deferred_plusplus.push((expr_type, pos, false));
+                }
                 Ok(expr_type)
             },
             Expr::PlusPlus(expr, true) => {
-                let expr_type = self.generate_expr(expr, pos, high_byte)?;
-                self.deferred_plusplus.push((expr_type, pos, true));
+                let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
+                if !second_time {
+                    self.deferred_plusplus.push((expr_type, pos, true));
+                }
                 Ok(expr_type)
             },
             Expr::Neg(v) => self.generate_neg(v, pos),
@@ -2210,8 +2218,8 @@ impl<'a, 'b> GeneratorState<'a> {
                         },
                         _ => false,
                 } {
-                    let l = self.generate_expr(lhs, pos, false)?;
-                    let r = self.generate_expr(rhs, pos, false)?;
+                    let l = self.generate_expr(lhs, pos, false, false)?;
+                    let r = self.generate_expr(rhs, pos, false, false)?;
                     if immediate_special {
                         if let ExprType::Immediate(a) = l {
                             if let ExprType::Immediate(b) = r {
@@ -2238,7 +2246,7 @@ impl<'a, 'b> GeneratorState<'a> {
             _ => ()
         };
 
-        let expr = self.generate_expr(condition, pos, false)?;
+        let expr = self.generate_expr(condition, pos, false, false)?;
         if flags_ok(&self.flags, &expr) {
             if let ExprType::A(_) = expr {
                 self.acc_in_use = false;
@@ -2318,13 +2326,13 @@ impl<'a, 'b> GeneratorState<'a> {
         let for_label = format!(".for{}", self.local_label_counter_for);
         let forupdate_label = format!(".forupdate{}", self.local_label_counter_for);
         let forend_label = format!(".forend{}", self.local_label_counter_for);
-        self.generate_expr(init, pos, false)?;
+        self.generate_expr(init, pos, false, false)?;
         self.loops.push((forupdate_label.clone(), forend_label.clone(), false));
         self.generate_condition(condition, pos, true, &forend_label, false)?;
         self.label(&for_label)?;
         self.generate_statement(body)?;
         self.label(&forupdate_label)?;
-        self.generate_expr(update, pos, false)?;
+        self.generate_expr(update, pos, false, false)?;
         self.purge_deferred_plusplus()?;
         self.generate_condition(condition, pos, false, &for_label, false)?;
         self.label(&forend_label)?;
@@ -2383,7 +2391,7 @@ impl<'a, 'b> GeneratorState<'a> {
 
     fn generate_switch(&mut self, expr: &'a Expr<'a>, cases: &'a Vec<(Vec<i32>, Vec<StatementLoc<'a>>)>, pos: usize) -> Result<(), Error>
     {
-        let e = self.generate_expr(expr, pos, false)?;
+        let e = self.generate_expr(expr, pos, false, false)?;
         self.local_label_counter_if += 1;
         let switchend_label = format!(".switchend{}", self.local_label_counter_if);
         match self.loops.last() {
@@ -2613,7 +2621,7 @@ impl<'a, 'b> GeneratorState<'a> {
         // Generate different kind of statements
         match &code.statement {
             Statement::Expression(expr) => { 
-                self.generate_expr(expr, code.pos, false)?;
+                self.generate_expr(expr, code.pos, false, false)?;
             },
             Statement::Block(statements) => {
                 for code in statements {
@@ -2644,11 +2652,11 @@ impl<'a, 'b> GeneratorState<'a> {
             Statement::Asm(s) => { self.generate_asm_statement(s)?; }
             Statement::Strobe(s) => { self.generate_strobe_statement(s, code.pos)?; }
             Statement::Store(e) => { 
-                let param = self.generate_expr(e, code.pos, false)?;
+                let param = self.generate_expr(e, code.pos, false, false)?;
                 self.generate_load_store_statement(&param, code.pos, false)?; 
             }
             Statement::Load(e) => { 
-                let param = self.generate_expr(e, code.pos, false)?;
+                let param = self.generate_expr(e, code.pos, false, false)?;
                 self.generate_load_store_statement(&param, code.pos, true)?; 
             }
             Statement::CSleep(s) => { self.generate_csleep_statement(*s, code.pos)?; }
