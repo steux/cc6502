@@ -64,7 +64,7 @@ impl Context {
             defs_ex: Vec::new(), // Contains the simple string 
             defs_ex_ex: Vec::new(), // Contains the string regexps that will be fed into regex_set
             regexes: Vec::new(),
-            define_regex: Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)(?:\(((?:(?:[a-zA-Z_][a-zA-Z0-9_]*)\s*,\s*)*(?:(?:[a-zA-Z_][a-zA-Z0-9_]*)))\))?\s*(.*)").unwrap()
+            define_regex: Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)(?:\(((?:(?:[a-zA-Z_][a-zA-Z0-9_]*)\s*,\s*)*(?:(?:[a-zA-Z_][a-zA-Z0-9_]*))*)\))?\s*(.*)").unwrap()
         };
         c.regex_sets.push(RegexSet::empty());
         c.defs_ex.push(Vec::new());
@@ -441,13 +441,16 @@ pub fn process<I: BufRead, O: Write>(
                         context.define(mcro, value);
                     } else {
                         let mut rex = format!("\\b{}\\(", mcro);
-                        for v in caps.get(2).unwrap().as_str().split(',') {
-                            let vx = v.trim_start();
-                            let re = Regex::new(&format!("\\b{}\\b", vx)).unwrap();
-                            value = re.replace_all(&value, format!("$${}",vx)).to_string();
-                            rex += &format!("(?P<{}>[^,]*),", vx);
+                        let params = caps.get(2).unwrap().as_str();
+                        if params != "" {
+                            for v in caps.get(2).unwrap().as_str().split(',') {
+                                let vx = v.trim_start();
+                                let re = Regex::new(&format!("\\b{}\\b", vx)).unwrap();
+                                value = re.replace_all(&value, format!("$${}",vx)).to_string();
+                                rex += &format!("(?P<{}>[^,]*),", vx);
+                            }
+                            rex = rex.strip_suffix(',').unwrap().to_string();
                         }
-                        rex = rex.strip_suffix(',').unwrap().to_string();
                         rex += "\\)";
                         debug!("regex:{}", &rex);
                         context.define_ex(mcro, (rex, value));
