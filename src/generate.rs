@@ -2093,7 +2093,14 @@ impl<'a, 'b> GeneratorState<'a> {
                         cmp = false;
                         self.tmp_in_use = false;
                     },
-                    _ => return Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
+                    _ => {
+                        if self.acc_in_use {
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                        }
+                        self.sasm(TYA)?;
+                        self.acc_in_use = true;
+                        return self.generate_condition_ex(&ExprType::A(false), op, r, pos, negate, label);
+                    }
                 } 
             },
             ExprType::X => {
@@ -2125,7 +2132,14 @@ impl<'a, 'b> GeneratorState<'a> {
                         cmp = false;
                         self.tmp_in_use = false;
                     },
-                    _ => return Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
+                    _ => {
+                        if self.acc_in_use {
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                        }
+                        self.sasm(TXA)?;
+                        self.acc_in_use = true;
+                        return self.generate_condition_ex(&ExprType::A(false), op, r, pos, negate, label);
+                    }
                 } 
             },
             _ => { return Err(Error::Unimplemented { feature: "condition statement is partially implemented" }); },

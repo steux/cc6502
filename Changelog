@@ -1,3 +1,6 @@
+v0.5.2 (5/17/2023) :
+    - Added missing cases for conditions on X or Y
+
 v0.5.1 (5/15/2023) :
     - Added support for function macros without parameters
     - Solved an issue with for statement

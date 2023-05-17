@@ -284,6 +284,28 @@ mod tests {
     }
     
     #[test]
+    fn if_test9() {
+        let args = sargs(1);
+        let input = "char i[1]; void main() { if (Y < i[X]) X = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("TYA\n\tCMP i,X\n\tBCS .ifend1"));
+    }
+    
+    #[test]
+    fn if_test10() {
+        let args = sargs(1);
+        let input = "char i[1]; void main() { if (X < i[Y]) X = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("TXA\n\tCMP i,Y\n\tBCS .ifend1"));
+    }
+    
+    #[test]
     fn not_test() {
         let args = sargs(1);
         let input = "void main() { X = 0; Y = !X; }";
