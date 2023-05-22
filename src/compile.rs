@@ -265,6 +265,7 @@ impl<'a> CompilerState<'a> {
         let res = self.parse_expr_ex(pairs)?;
 
         // Create collected literal variables in memory
+        self.literal_counter += res.1.len();
         for k in &res.1 {
             let vb = k.1.as_bytes();
             let mut v = Vec::<i32>::new();
@@ -1088,10 +1089,11 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
     // Start preprocessor
     //debug!("Preprocessor");
     let mapped_lines = cpp::process(input, &mut preprocessed, &mut context)?;
-    //debug!("Mapped lines = {:?}", mapped_lines);
+    debug!("Mapped lines = {:?}", mapped_lines);
 
     let preprocessed_utf8 = std::str::from_utf8(&preprocessed)?;
-    
+    debug!("Preprcessed: {}", preprocessed_utf8);
+
     // Prepare the state
     let mut state = CompilerState {
         variables: HashMap::new(),

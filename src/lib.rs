@@ -18,6 +18,8 @@
     Contact info: bruno.steux@gmail.com
 */
 
+// TODO: cpp.rs: process string literal before comments or any macro substitution
+
 mod cpp;
 pub mod error;
 pub mod compile;

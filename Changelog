@@ -1,4 +1,5 @@
-v0.5.2 (5/17/2023) :
+v0.5.2 (5/22/2023) :
+    - Corrected a bug with mutiple string literals
     - Added missing cases for conditions on X or Y
 
 v0.5.1 (5/15/2023) :
