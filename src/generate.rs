@@ -1702,7 +1702,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.generate_shift(&left, op, &right, pos, high_byte)
                     },
                     Operation::TernaryCond1 => self.generate_ternary(lhs, rhs, pos),
-                    Operation::TernaryCond2 => unreachable!(),
+                    Operation::TernaryCond2 => return Err(self.compiler_state.syntax_error("Unexpected ':'. Probably a ';' typo", pos)),
                     Operation::Comma => {
                         self.generate_expr(lhs, pos, false, false)?;
                         self.purge_deferred_plusplus()?;
