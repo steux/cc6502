@@ -156,7 +156,8 @@ escaped_character = @{ "\\" ~ ANY }
 character   = @{ escaped_character | ANY }
 quoted_character   = ${ "'" ~ character ~ "'" }
 string      = @{ (!"\"" ~ character)* } 
-quoted_string      = ${ "\"" ~ string ~ "\""}
+// quoted_string      = ${ "\"" ~ string ~ "\""} // Pure C definition
+quoted_string = { ("@" ~ decimal ~ "@")+ } // Actual definition after C preprocessing
 
 calc_expr       =   { calc_prefix* ~ calc_primary ~ (calc_infix ~ calc_prefix* ~ calc_primary)* }
     calc_infix    =  _{ mul | div | add | sub | bls | brs | land | lor | and | xor | or | gt | gte | lt | lte | eq | neq | not | bnot | ternary_cond1 | ternary_cond2 }

@@ -20,6 +20,7 @@
 
 // TODO: Implement NMI interrupt routine support
 // TODO: cpp.rs: process string literal before comments or any macro substitution
+// TODO: implement 16 bits comparison
 
 mod cpp;
 pub mod error;
@@ -594,6 +595,28 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("cctmp0\n\thex 7a6f626900\ncctmp1\n\thex 7a6f626100\ns\n\t.byte <cctmp0, <cctmp1, >cctmp0, >cctmp1"));
+    }
+    
+    #[test]
+    fn quoted_string_test4() {
+        let args = sargs(1);
+        let input = "char *s = \"zobi/*comment*/\";";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("s\n\thex 7a6f62692f2a636f6d6d656e742a2f00"));
+    }
+    
+    #[test]
+    fn quoted_string_test5() {
+        let args = sargs(1);
+        let input = "#define zobi(x) x\nchar *s; void main() { s = zobi(\"hello, world!\"); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("hex 68656c6c6f2c20776f726c642100"));
     }
     
     #[test]

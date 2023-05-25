@@ -308,7 +308,7 @@ impl<'a> CompilerState<'a> {
                     Rule::identifier => Ok(Expr::Identifier(self.parse_identifier(primary.into_inner())?)),
                     Rule::quoted_string => {
                         // Create a temp variable pointing to this quoted_string
-                        let v = compile_quoted_string(primary.into_inner().next().unwrap().as_str());
+                        let v = self.compile_quoted_string(primary);
                         let name = format!("cctmp{}", literal_counter);
                         literal_counter += 1;
                         literal_strings.insert(name.clone(), v);
@@ -778,7 +778,7 @@ impl<'a> CompilerState<'a> {
                                                         v.push(s);
                                                     },
                                                     Rule::quoted_string => {
-                                                        let k = compile_quoted_string(pxx.into_inner().next().unwrap().as_str());
+                                                        let k = self.compile_quoted_string(pxx);
                                                         let name = format!("cctmp{}", self.literal_counter);
                                                         self.literal_counter += 1;
                                                         let vb = k.as_bytes();
@@ -820,8 +820,7 @@ impl<'a> CompilerState<'a> {
                                         if var_type != VariableType::CharPtr {
                                             return Err(self.syntax_error("String provided for something not a char*", start));
                                         }
-                                        let s = px.into_inner().next().unwrap().as_str();
-                                        let string = compile_quoted_string(s);
+                                        let string = self.compile_quoted_string(px);
                                         let vb = string.as_bytes();
                                         let mut v = Vec::<i32>::new();
                                         for c in vb.iter() {
@@ -990,6 +989,18 @@ impl<'a> CompilerState<'a> {
         Ok(())
     }
 
+    fn compile_quoted_string(&self, p: Pair<Rule>) -> String
+    {
+        let mut v = String::new();
+        let it = p.into_inner();
+        for i in it {
+            let j = i.as_str().parse::<usize>().unwrap();
+            v.push_str(&compile_quoted_string_ex(&self.context.literal_strings[j]));
+        }
+        v
+    }
+
+
 }
 
 fn parse_int(p: Pair<Rule>) -> i32
@@ -999,7 +1010,7 @@ fn parse_int(p: Pair<Rule>) -> i32
         Rule::hexadecimal => i32::from_str_radix(&p.as_str()[2..], 16).unwrap(),
         Rule::octal => i32::from_str_radix(p.as_str(), 8).unwrap(),
         Rule::quoted_character => {
-            let s = compile_quoted_string(p.into_inner().next().unwrap().as_str());
+            let s = compile_quoted_string_ex(p.into_inner().next().unwrap().as_str());
             s.chars().next().unwrap() as i32
         }
         _ => {
@@ -1008,7 +1019,7 @@ fn parse_int(p: Pair<Rule>) -> i32
     }
 }
 
-fn compile_quoted_string(s: &str) -> String 
+fn compile_quoted_string_ex(s: &str) -> String 
 {
     let mut i = s.chars();
     let mut v = String::new();

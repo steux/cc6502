@@ -1,3 +1,6 @@
+v0.5.3 (5/25/2023) :
+    - Moved processing of literal strings to preprocessor, in order to avoid troubles with comments inside strings
+
 v0.5.2 (5/22/2023) :
     - Corrected a bug with mutiple string literals
     - Added missing cases for conditions on X or Y
