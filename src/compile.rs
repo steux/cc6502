@@ -172,6 +172,9 @@ pub struct Function<'a> {
     order: usize,
     pub inline: bool,
     pub bank: u32,
+    pub interrupt: bool,
+    pub signed: bool,
+    pub var_type: Option<VariableType>,
     pub code: Option<StatementLoc<'a>>,
 }
 
@@ -908,60 +911,68 @@ impl<'a> CompilerState<'a> {
     {
         let mut inline = false;
         let mut bank = 0u32;
-        let mut p = pairs;
-        let mut pair = p.next().unwrap();
-        if pair.as_rule() == Rule::inline { 
-            inline = true; 
-            pair = p.next().unwrap();
-        }
-        if pair.as_rule() == Rule::bank { 
-            bank = pair.into_inner().next().unwrap().as_str().parse::<u32>().unwrap();
-            pair = p.next().unwrap();
-        }
-        if bank != 0 && inline {
-            return Err(self.syntax_error("Bank spec and inlining are incompatible", pair.as_span().start()));
-        }
-        match pair.as_rule() {
-            Rule::id_name => {
-                let name = pair.as_str();
-                let pair = p.next();
-                match pair {
-                    Some(px) => match px.as_rule() {
-                        Rule::block => {
-                            let n = name.to_string();
-                            if let Some(f) = self.functions.get(&n) {
-                                if f.code.is_some() {
-                                    return Err(self.syntax_error(&format!("Function {} already defined", n), px.as_span().start()));
-                                }
-                            }
-                            let code = self.compile_block(px)?;
-                            self.functions.insert(n, Function {
-                                order: self.functions.len(),
-                                inline,
-                                bank,
-                                code: Some(code)
-                            });
-                        },
-                        _ => unreachable!(), 
-                    },
-                    None => {
-                        // This is just a prototype definition
-                        let n = name.to_string();
-                        if self.functions.get(&n).is_none() {
-                            self.functions.insert(n, Function {
-                                order: self.functions.len(),
-                                inline,
-                                bank,
-                                code: None 
-                            });
+        let mut signed = self.signed_chars;
+        let mut var_type = None;
+        let mut interrupt = false;
+        let mut name = String::new();
+        for pair in pairs {
+            let start = pair.as_span().start();
+            match pair.as_rule() {
+                Rule::inline => {
+                    inline = true; 
+                },
+                Rule::bank => {
+                    bank = pair.into_inner().next().unwrap().as_str().parse::<u32>().unwrap();
+                    if bank != 0 && inline {
+                        return Err(self.syntax_error("Bank spec and inlining are incompatible", start));
+                    }
+                },
+                Rule::interrupt => {
+                    interrupt = true;
+                },
+                Rule::id_name => {
+                    name = pair.as_str().to_string();
+                },
+                Rule::var_sign => {
+                    signed = pair.as_str().eq("signed");
+                },
+                Rule::var_simple_type => if pair.as_str().starts_with("char") {
+                    var_type = Some(VariableType::Char);
+                } else {
+                    return Err(self.syntax_error("Only char type is allowed as return type of function", start));
+                },
+                Rule::block => {
+                    if let Some(f) = self.functions.get(&name) {
+                        if f.code.is_some() {
+                            return Err(self.syntax_error(&format!("Function {} already defined", name), start));
                         }
                     }
-                }
-            },
-            _ => {
-                debug!("What's this ? {:?}", pair);
-                unreachable!()
-            }
+                    let code = self.compile_block(pair)?;
+                    self.functions.insert(name, Function {
+                        order: self.functions.len(),
+                        inline,
+                        bank,
+                        code: Some(code),
+                        interrupt,
+                        signed,
+                        var_type
+                    });
+                    return Ok(())
+                },
+                _ => unreachable!(), 
+            };
+        }
+        // This is just a prototype definition
+        if self.functions.get(&name).is_none() {
+            self.functions.insert(name, Function {
+                order: self.functions.len(),
+                inline,
+                bank,
+                code: None,
+                interrupt,
+                signed,
+                var_type
+            });
         }
         Ok(())
     }

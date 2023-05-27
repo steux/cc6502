@@ -46,8 +46,9 @@ var_def = { calc_expr | array_def | quoted_string }
 array_def = { "{" ~ ((calc_expr | id_name | quoted_string) ~ ",")* ~ (calc_expr | id_name | quoted_string) ~ "}" }
 pointer = { "*" }
 
-func_decl = { inline? ~ bank? ~ "void" ~ id_name ~ "(" ~ ("void")? ~ ")" ~ (";" | block) ~ ";"*}
+func_decl = { inline? ~ bank? ~ ("void" | (var_sign? ~ var_simple_type?)) ~ interrupt? ~ id_name ~ "(" ~ ("void")? ~ ")" ~ (";" | block) ~ ";"*}
 inline = { "inline" }
+interrupt = { "interrupt" }
 bank = ${ "bank" ~ bank_number }
 bank_number = { ASCII_DIGIT }
 

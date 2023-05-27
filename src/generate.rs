@@ -2291,7 +2291,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 ExprType::Absolute(a, eight_bits, b) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     if !eight_bits {
-                        return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
+                        return Err(self.compiler_state.syntax_error("Comparison is not implemented on 16 bits data", pos));
                     }
                     self.asm(LDA, &expr, pos, false)?;
                     self.flags = FlagsState::Absolute(a, eight_bits, b);
