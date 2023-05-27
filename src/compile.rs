@@ -151,7 +151,7 @@ pub enum Statement<'a> {
     },
     Break,
     Continue,
-    Return,
+    Return(Expr<'a>),
     Asm(&'a str),
     Strobe(Expr<'a>),
     Load(Expr<'a>),
@@ -173,8 +173,8 @@ pub struct Function<'a> {
     pub inline: bool,
     pub bank: u32,
     pub interrupt: bool,
-    pub signed: bool,
-    pub var_type: Option<VariableType>,
+    pub return_signed: bool,
+    pub return_type: Option<VariableType>,
     pub code: Option<StatementLoc<'a>>,
 }
 
@@ -518,8 +518,14 @@ impl<'a> CompilerState<'a> {
                 })
             },
             Rule::return_statement => {
+                let mut p = pair.into_inner();
+                let i = p.next().unwrap();
+                let return_value = match i.as_rule() {
+                    Rule::nothing => Expr::Nothing,
+                    _ => self.parse_expr(i.into_inner())?
+                };
                 Ok(StatementLoc {
-                    pos, label: None, statement: Statement::Return
+                    pos, label: None, statement: Statement::Return(return_value)
                 })
             },
             Rule::asm_statement => {
@@ -911,8 +917,8 @@ impl<'a> CompilerState<'a> {
     {
         let mut inline = false;
         let mut bank = 0u32;
-        let mut signed = self.signed_chars;
-        let mut var_type = None;
+        let mut return_signed = self.signed_chars;
+        let mut return_type = None;
         let mut interrupt = false;
         let mut name = String::new();
         for pair in pairs {
@@ -934,10 +940,10 @@ impl<'a> CompilerState<'a> {
                     name = pair.as_str().to_string();
                 },
                 Rule::var_sign => {
-                    signed = pair.as_str().eq("signed");
+                    return_signed = pair.as_str().eq("return_signed");
                 },
                 Rule::var_simple_type => if pair.as_str().starts_with("char") {
-                    var_type = Some(VariableType::Char);
+                    return_type = Some(VariableType::Char);
                 } else {
                     return Err(self.syntax_error("Only char type is allowed as return type of function", start));
                 },
@@ -954,8 +960,8 @@ impl<'a> CompilerState<'a> {
                         bank,
                         code: Some(code),
                         interrupt,
-                        signed,
-                        var_type
+                        return_signed,
+                        return_type
                     });
                     return Ok(())
                 },
@@ -970,8 +976,8 @@ impl<'a> CompilerState<'a> {
                 bank,
                 code: None,
                 interrupt,
-                signed,
-                var_type
+                return_signed,
+                return_type
             });
         }
         Ok(())

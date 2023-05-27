@@ -1350,7 +1350,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_function_call(&mut self, expr: &Expr<'a>, pos: usize) -> Result<(), Error>
+    fn generate_function_call(&mut self, expr: &Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Identifier((var, sub)) => {
@@ -1361,6 +1361,9 @@ impl<'a, 'b> GeneratorState<'a> {
                             Some(f) => {
                                 let acc_in_use = self.acc_in_use;
                                 if acc_in_use { self.sasm(PHA)?; }
+                                if f.interrupt {
+                                    return Err(self.compiler_state.syntax_error("Can't call an interrupt routine", pos))
+                                }
                                 if f.inline {
                                     if f.code.is_some() {
                                         self.push_code(var)?;
@@ -1390,9 +1393,19 @@ impl<'a, 'b> GeneratorState<'a> {
                                 } else {
                                     return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                 }
-                                if acc_in_use { self.sasm(PLA)?; }
                                 self.flags = FlagsState::Unknown;
-                                Ok(())
+                                if acc_in_use { 
+                                    self.sasm(PLA)?; 
+                                }
+                                if f.return_type.is_some() {
+                                    if self.tmp_in_use {
+                                        return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    }
+                                    self.tmp_in_use = true;
+                                    Ok(ExprType::Tmp(f.return_signed)) 
+                                } else {
+                                    Ok(ExprType::Nothing)
+                                }
                             }
                         }
                     },
@@ -1762,8 +1775,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 }
             },
             Expr::FunctionCall(expr) => {
-                self.generate_function_call(expr, pos)?;
-                Ok(ExprType::Nothing)
+                self.generate_function_call(expr, pos)
             },
             Expr::MinusMinus(expr, false) => {
                 let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
@@ -2663,7 +2675,7 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             Statement::Break => { self.generate_break(code.pos)?; }
             Statement::Continue => { self.generate_continue(code.pos)?; }
-            Statement::Return => { self.generate_return()?; }
+            Statement::Return(_) => { self.generate_return()?; }
             Statement::Asm(s) => { self.generate_asm_statement(s)?; }
             Statement::Strobe(s) => { self.generate_strobe_statement(s, code.pos)?; }
             Statement::Store(e) => { 
