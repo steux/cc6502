@@ -997,6 +997,7 @@ impl<'a> CompilerState<'a> {
             let j = i.as_str().parse::<usize>().unwrap();
             v.push_str(&compile_quoted_string_ex(&self.context.literal_strings[j]));
         }
+        v.push(char::from_u32(0).unwrap());
         v
     }
 
@@ -1041,7 +1042,6 @@ fn compile_quoted_string_ex(s: &str) -> String
             v.push(c);
         }
     }
-    v.push(char::from_u32(0).unwrap());
     v
 }
     

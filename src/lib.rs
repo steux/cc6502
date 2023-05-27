@@ -19,8 +19,9 @@
 */
 
 // TODO: Implement NMI interrupt routine support
-// TODO: cpp.rs: process string literal before comments or any macro substitution
+// DONE: cpp.rs: process string literal before comments or any macro substitution
 // TODO: implement 16 bits comparison
+// TODO: Add function return values (in accumulator)
 
 mod cpp;
 pub mod error;
@@ -612,6 +613,17 @@ char i; void main() { i = one; }";
     fn quoted_string_test5() {
         let args = sargs(1);
         let input = "#define zobi(x) x\nchar *s; void main() { s = zobi(\"hello, world!\"); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("hex 68656c6c6f2c20776f726c642100"));
+    }
+    
+    #[test]
+    fn quoted_string_test6() {
+        let args = sargs(1);
+        let input = "char *s = \"hello, \"\n\t\"world!\";";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
