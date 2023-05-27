@@ -2527,9 +2527,34 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    pub fn generate_return(&mut self) -> Result<(), Error>
+    pub fn generate_return(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<(), Error>
     {
-        self.sasm(RTS)?; 
+        if let Some(s) = &self.current_function {
+            let f = self.compiler_state.functions.get(s).unwrap(); 
+            if f.interrupt {
+                self.sasm(RTI)?;
+                return Ok(());
+            } else {
+                let e = self.generate_expr(expr, pos, false, false)?;
+                if f.return_type.is_some() {
+                    if e == ExprType::Nothing {
+                        return Err(self.compiler_state.syntax_error("Function must return a value", pos))
+                    } else {
+                        if self.tmp_in_use {
+                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                        }
+                        self.generate_assign(&ExprType::Tmp(f.return_signed), &e, pos, false)?;
+                    }
+                } else {
+                    if e != ExprType::Nothing {
+                        return Err(self.compiler_state.syntax_error("void function can't return a value", pos))
+                    }
+                }
+            }
+        } else {
+            unreachable!();
+        }
+        self.sasm(RTS)?;
         Ok(())
     }
 
@@ -2675,7 +2700,7 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             Statement::Break => { self.generate_break(code.pos)?; }
             Statement::Continue => { self.generate_continue(code.pos)?; }
-            Statement::Return(_) => { self.generate_return()?; }
+            Statement::Return(e) => { self.generate_return(e, code.pos)?; }
             Statement::Asm(s) => { self.generate_asm_statement(s)?; }
             Statement::Strobe(s) => { self.generate_strobe_statement(s, code.pos)?; }
             Statement::Store(e) => { 

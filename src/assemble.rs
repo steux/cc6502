@@ -35,7 +35,8 @@ pub enum AsmMnemonic {
     BCC, BCS, BEQ, BMI, BNE, BPL,
     INC, INX, INY,
     DEC, DEX, DEY,
-    JMP, JSR, RTS,
+    JMP, JSR, 
+    RTS, RTI,
     PHA, PLA,
     #[cfg(constant_time)]
     PHP, 
