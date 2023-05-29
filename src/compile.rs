@@ -152,7 +152,7 @@ pub enum Statement<'a> {
     Break,
     Continue,
     Return(Expr<'a>),
-    Asm(&'a str),
+    Asm(String),
     Strobe(Expr<'a>),
     Load(Expr<'a>),
     Store(Expr<'a>),
@@ -529,7 +529,8 @@ impl<'a> CompilerState<'a> {
                 })
             },
             Rule::asm_statement => {
-                let s = pair.into_inner().next().unwrap().into_inner().next().unwrap().as_str();
+                let mut s = self.compile_quoted_string(pair.into_inner().next().unwrap());
+                s.pop();
                 Ok(StatementLoc {
                     pos, label: None, statement: Statement::Asm(s)
                 })

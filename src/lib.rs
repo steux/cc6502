@@ -1009,4 +1009,15 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSEC\n\tSBC a\n\tSTA a"));
     } 
+
+    #[test]
+    fn asm_test() {
+        let args = sargs(1); 
+        let input = "void main() { asm(\"LDA #32\\n\\tSTA cctmp\"); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #32\n\tSTA cctmp\n\t"));
+    } 
 }
