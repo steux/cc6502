@@ -1,4 +1,5 @@
 v0.6.0 (05/28/2023) :
+    - Mark functions actually in use (for linker) 
     - Implemented 16-bis comparisons (partial)
     - Corrected a bug in 16-bits negation
     - Added function return values (in cctmp)

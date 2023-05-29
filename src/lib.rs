@@ -22,7 +22,7 @@
 // DONE: cpp.rs: process string literal before comments or any macro substitution
 // DONE: implement 16 bits comparison
 // DONE: Add function return values (in cctmp)
-// TODO: Mark functions as used or not for the linker
+// DONE: Mark functions as used or not for the linker
 
 mod cpp;
 pub mod error;

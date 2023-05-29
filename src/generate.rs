@@ -18,7 +18,7 @@
     Contact info: bruno.steux@gmail.com
 */
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use log::{debug, info};
 use std::io::Write;
 use regex::Regex;
@@ -68,6 +68,7 @@ pub struct GeneratorState<'a> {
     deferred_plusplus: Vec<(ExprType<'a>, usize, bool)>,
     pub current_bank: u32,
     pub functions_code: HashMap<String, AssemblyCode>,
+    pub functions_actually_in_use: HashSet<String>,
     pub current_function: Option<String>,
     bankswitching_scheme: &'a str,
     protected: bool,
@@ -95,6 +96,7 @@ impl<'a, 'b> GeneratorState<'a> {
             deferred_plusplus: Vec::new(),
             current_bank: 0,
             functions_code: HashMap::new(),
+            functions_actually_in_use: HashSet::new(),
             current_function: None,
             bankswitching_scheme,
             protected: false,
@@ -1360,6 +1362,9 @@ impl<'a, 'b> GeneratorState<'a> {
                         match self.compiler_state.functions.get(*var) {
                             None => Err(self.compiler_state.syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
+                                // Set this function as actually used
+                                self.functions_actually_in_use.insert(var.to_string());
+                                
                                 let acc_in_use = self.acc_in_use;
                                 if acc_in_use { self.sasm(PHA)?; }
                                 if f.interrupt {
@@ -1398,6 +1403,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 if acc_in_use { 
                                     self.sasm(PLA)?; 
                                 }
+                                // Manage return value
                                 if f.return_type.is_some() {
                                     if self.tmp_in_use {
                                         return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
