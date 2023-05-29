@@ -934,6 +934,9 @@ impl<'a> CompilerState<'a> {
                     }
                 },
                 Rule::interrupt => {
+                    if bank != 0 {
+                        return Err(self.syntax_error("Bank spec and interrupt are incompatible", start));
+                    }
                     interrupt = true;
                 },
                 Rule::id_name => {

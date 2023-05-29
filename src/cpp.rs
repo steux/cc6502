@@ -322,45 +322,57 @@ pub fn process<I: BufRead, O: Write>(
                 let mut s = remaining.split("//").next().unwrap().splitn(2, "/*");
                 // Is there a string start before that point ?
                 let s2 = s.next().unwrap();
-                if let Some((left, _)) = s2.split_once('"') {
-                    // We have a string start
-                    // Let's find the end of the string
-                    let mut done = false;
-                    let mut found = false;
-                    let mut cursor = left.len() + 1;
-                    while !done {
-                        let s3 = &remaining[cursor..];
-                        if let Some((left, _)) = s3.split_once('"') {
-                            if !left.ends_with("\\") {
-                                found = true;
-                                done = true;
-                                cursor += left.len();
-                            } else {
-                                // Let's check it's not an escaped backslash
-                                if left.ends_with("\\\\") {
+                if !s2.starts_with("#include") {
+                    if let Some((left, _)) = s2.split_once('"') {
+                        // We have a string start
+                        // Let's find the end of the string
+                        let mut done = false;
+                        let mut found = false;
+                        let mut cursor = left.len() + 1;
+                        while !done {
+                            let s3 = &remaining[cursor..];
+                            if let Some((left, _)) = s3.split_once('"') {
+                                if !left.ends_with("\\") {
                                     found = true;
                                     done = true;
                                     cursor += left.len();
                                 } else {
-                                    cursor += left.len() + 1;
+                                    // Let's check it's not an escaped backslash
+                                    if left.ends_with("\\\\") {
+                                        found = true;
+                                        done = true;
+                                        cursor += left.len();
+                                    } else {
+                                        cursor += left.len() + 1;
+                                    }
                                 }
+                            } else {
+                                done = true;
                             }
-                        } else {
-                            done = true;
                         }
-                    }
-                    if !found {
-                        // This is an unterminated string. Forbidden
-                        return Err(Error::Syntax {
-                            filename: filename.clone(), included_in: included_in.clone(), line,
-                            msg: "Unterminated string".to_string() })
+                        if !found {
+                            // This is an unterminated string. Forbidden
+                            return Err(Error::Syntax {
+                                filename: filename.clone(), included_in: included_in.clone(), line,
+                                msg: "Unterminated string".to_string() })
+                        } else {
+                            uncommented_buf.push_str(&format!("{}@{}@", left, context.literal_strings_number));
+                            context.literal_strings_number += 1;
+                            let s = remaining[left.len() + 1..cursor].to_string();
+                            debug!("String literal: {:?}", &s);
+                            context.literal_strings.push(s);
+                            remaining = &remaining[cursor + 1..];
+                        }
                     } else {
-                        uncommented_buf.push_str(&format!("{}@{}@", left, context.literal_strings_number));
-                        context.literal_strings_number += 1;
-                        let s = remaining[left.len() + 1..cursor].to_string();
-                        debug!("String literal: {:?}", &s);
-                        context.literal_strings.push(s);
-                        remaining = &remaining[cursor + 1..];
+                        uncommented_buf.push_str(s2);
+                        if uncommented_buf.is_empty() { insert_it = false; }
+                        match s.next() {
+                            Some(string) => {
+                                in_multiline_comments = true;
+                                remaining = string;
+                            },
+                            _ => break
+                        }
                     }
                 } else {
                     uncommented_buf.push_str(s2);

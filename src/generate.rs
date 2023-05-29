@@ -748,7 +748,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             },
                             ExprType::AbsoluteY(variable) => {
                                 let v = self.compiler_state.get_variable(variable);
-                                if v.memory == VariableMemory::Zeropage {
+                                if v.memory == VariableMemory::Zeropage && v.var_type != VariableType::CharPtr {
                                     self.asm(STX, left, pos, high_byte)?;
                                 } else {
                                     if self.acc_in_use { self.sasm(PHA)?; }
@@ -879,6 +879,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
                                 self.tmp_in_use = true;
+                                self.asm(STA, left, pos, high_byte)?;
                                 return Ok(ExprType::Tmp(signed));
                             },
                             _ => return Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
@@ -1481,14 +1482,14 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_neg(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_neg(&mut self, expr: &'a Expr<'a>, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(-*i)),
             _ => {
                 let left = ExprType::Immediate(0);
-                let right = self.generate_expr(expr, pos, false, false)?;
-                self.generate_arithm(&left, &Operation::Sub(false), &right, pos, false)
+                let right = self.generate_expr(expr, pos, high_byte, false)?;
+                self.generate_arithm(&left, &Operation::Sub(false), &right, pos, high_byte) 
             }
         }
     }
@@ -1805,7 +1806,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 }
                 Ok(expr_type)
             },
-            Expr::Neg(v) => self.generate_neg(v, pos),
+            Expr::Neg(v) => self.generate_neg(v, pos, high_byte),
             Expr::Not(v) => self.generate_not(v, pos),
             Expr::BNot(v) => self.generate_bnot(v, pos),
             Expr::Deref(v) => self.generate_deref(v, pos),
@@ -1949,6 +1950,60 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
+    fn generate_condition_16bits(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>, pos: usize, label: &str) -> Result<(), Error>
+    {
+        let mut f = ExprType::Nothing;
+        let compute_subtraction = if let ExprType::Immediate(v) = r {
+            if *v == 0 {
+                if *op != Operation::Gte && *op != Operation::Lt {
+                    self.generate_assign(&ExprType::Tmp(false), l, pos, false)?;
+                }
+                f = self.generate_assign(&ExprType::A(true), l, pos, true)?;
+                false
+            } else { true }
+        } else { true };
+        if compute_subtraction {
+            let e = self.generate_arithm(l, &Operation::Sub(false), r, pos, false)?;
+            if e != ExprType::Tmp(false) {
+                self.generate_assign(&ExprType::Tmp(false), &e, pos, false)?;
+            }
+            f = self.generate_arithm(l, &Operation::Sub(false), r, pos, true)?;
+        }
+        match op {
+            Operation::Eq => {
+                let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
+                self.local_label_counter_if += 1;
+                self.generate_condition_ex(&f, &op, &ExprType::Immediate(0), pos, true, &ifstart_label)?;
+                self.generate_condition_ex(&ExprType::Tmp(false), op, &ExprType::Immediate(0), pos, false, label)?;
+                self.label(&ifstart_label)
+            },
+            Operation::Neq => {
+                self.generate_condition_ex(&f, &op, &ExprType::Immediate(0), pos, false, label)?;
+                self.generate_condition_ex(&ExprType::Tmp(false), op, &ExprType::Immediate(0), pos, false, label)
+            },
+            Operation::Gt => {
+                self.generate_condition_ex(&f, &op, &ExprType::Immediate(0), pos, false, label)?;
+                let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
+                self.local_label_counter_if += 1;
+                self.generate_condition_ex(&f, &Operation::Eq, &ExprType::Immediate(0), pos, true, &ifstart_label)?;
+                self.generate_condition_ex(&ExprType::Tmp(false), &Operation::Neq, &ExprType::Immediate(0), pos, false, label)?;
+                self.label(&ifstart_label)
+            },
+            Operation::Gte | Operation::Lt => {
+                self.generate_condition_ex(&f, &op, &ExprType::Immediate(0), pos, false, label)
+            },
+            Operation::Lte => {
+                self.generate_condition_ex(&f, &Operation::Lt, &ExprType::Immediate(0), pos, false, label)?;
+                let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
+                self.local_label_counter_if += 1;
+                self.generate_condition_ex(&f, &Operation::Eq, &ExprType::Immediate(0), pos, true, &ifstart_label)?;
+                self.generate_condition_ex(&ExprType::Tmp(false), &Operation::Eq, &ExprType::Immediate(0), pos, false, label)?;
+                self.label(&ifstart_label)
+            },
+            _ => unreachable!()
+        }
+    }
+    
     fn generate_condition_ex(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>, pos: usize, negate: bool, label: &str) -> Result<(), Error>
     {
         let left;
@@ -1960,7 +2015,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 false
             }, 
             _ => match &r {
-                ExprType::A(_) => {
+                ExprType::A(_) | ExprType::X | ExprType::Y => {
                     left = r; right = l;
                     true 
                 },
@@ -1984,7 +2039,7 @@ impl<'a, 'b> GeneratorState<'a> {
         } else { *op };
 
         let operator = if switch {
-            match op {
+            match opx {
                 Operation::Eq => Operation::Eq,
                 Operation::Neq => Operation::Neq,
                 Operation::Gt => Operation::Lt,
@@ -2002,10 +2057,20 @@ impl<'a, 'b> GeneratorState<'a> {
                     match operator {
                         Operation::Neq => {
                             self.asm(BNE, &ExprType::Label(label), pos, false)?;
+                            match left {
+                                ExprType::A(_) => self.acc_in_use = false,
+                                ExprType::Tmp(_) => self.tmp_in_use = false,
+                                _ => (),
+                            }
                             return Ok(());
                         },
                         Operation::Eq => {
                             self.asm(BEQ, &ExprType::Label(label), pos, false)?;
+                            match left {
+                                ExprType::A(_) => self.acc_in_use = false,
+                                ExprType::Tmp(_) => self.tmp_in_use = false,
+                                _ => (),
+                            }
                             return Ok(());
                         },
                         _ => {
@@ -2018,7 +2083,14 @@ impl<'a, 'b> GeneratorState<'a> {
                             }
                             let signed = match left {
                                 ExprType::X | ExprType::Y => false,
-                                ExprType::A(s) => *s,
+                                ExprType::A(s) => {
+                                    self.acc_in_use = false;
+                                    *s
+                                },
+                                ExprType::Tmp(s) => {
+                                    self.tmp_in_use = false;
+                                    *s
+                                },
                                 ExprType::AbsoluteX(s) | ExprType::AbsoluteY(s) | ExprType::Absolute(s, _, _) => {
                                     let v = self.compiler_state.get_variable(s);
                                     v.signed
@@ -2044,7 +2116,7 @@ impl<'a, 'b> GeneratorState<'a> {
             ExprType::Absolute(a, eight_bits, b) => {
                 if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 if !eight_bits {
-                    return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
+                    return self.generate_condition_16bits(left, &operator, right, pos, label);
                 }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
@@ -2086,7 +2158,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
+                            return Err(self.compiler_state.syntax_error("Comparison is only partially implemented on 16 bits data", pos));
                         }
                         self.asm(CPY, right, pos, false)?;
                         cmp = false;
@@ -2125,7 +2197,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     ExprType::Absolute(_, eight_bits, _) => {
                         if !eight_bits {
-                            return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
+                            return Err(self.compiler_state.syntax_error("Comparison is only partially implemented on 16 bits data", pos));
                         }
                         self.asm(CPX, right, pos, false)?;
                         cmp = false;
@@ -2170,7 +2242,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 },
                 ExprType::Absolute(_, eight_bits, _) => {
                     if !eight_bits {
-                        return Err(self.compiler_state.syntax_error("Comparision is not implemented on 16 bits data", pos));
+                        return Err(self.compiler_state.syntax_error("Comparison is only partially implemented on 16 bits data", pos));
                     }
                     self.asm(CMP, right, pos, false)?;
                     self.flags = FlagsState::Unknown;
@@ -2277,6 +2349,9 @@ impl<'a, 'b> GeneratorState<'a> {
             if let ExprType::A(_) = expr {
                 self.acc_in_use = false;
             }
+            if let ExprType::Tmp(_) = expr {
+                self.tmp_in_use = false;
+            }
             if negate {
                 self.asm(BEQ, &ExprType::Label(label), pos, false)?;
             } else {
@@ -2303,7 +2378,8 @@ impl<'a, 'b> GeneratorState<'a> {
                 ExprType::Absolute(a, eight_bits, b) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     if !eight_bits {
-                        return Err(self.compiler_state.syntax_error("Comparison is not implemented on 16 bits data", pos));
+                        self.generate_condition_16bits(&expr, if negate { &Operation::Eq } else { &Operation::Neq }, &ExprType::Immediate(0), pos, label)?; 
+                        return Ok(None);
                     }
                     self.asm(LDA, &expr, pos, false)?;
                     self.flags = FlagsState::Absolute(a, eight_bits, b);
@@ -2540,9 +2616,6 @@ impl<'a, 'b> GeneratorState<'a> {
                     if e == ExprType::Nothing {
                         return Err(self.compiler_state.syntax_error("Function must return a value", pos))
                     } else {
-                        if self.tmp_in_use {
-                            return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
-                        }
                         self.generate_assign(&ExprType::Tmp(f.return_signed), &e, pos, false)?;
                     }
                 } else {

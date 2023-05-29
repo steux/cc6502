@@ -18,10 +18,11 @@
     Contact info: bruno.steux@gmail.com
 */
 
-// TODO: Implement NMI interrupt routine support
+// DONE: Implement NMI interrupt routine support
 // DONE: cpp.rs: process string literal before comments or any macro substitution
-// TODO: implement 16 bits comparison
-// TODO: Add function return values (in accumulator)
+// DONE: implement 16 bits comparison
+// DONE: Add function return values (in cctmp)
+// TODO: Mark functions as used or not for the linker
 
 mod cpp;
 pub mod error;
@@ -897,4 +898,115 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("TXA\n\tTAY"));
     }
+
+    #[test]
+    fn function_call_test1() {
+        let args = sargs(1); 
+        let input = "char f() { return 2;} void main() { Y = f(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("f\tSUBROUTINE\n\tLDA #2\n\tSTA cctmp\n\tRTS"));
+        assert!(result.contains("JSR f\n\tLDY cctmp"));
+    } 
+    
+    #[test]
+    fn if_16bits_test1() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a == 10000) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSEC\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test2() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a != 10000) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSEC\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifstart1\n\tLDA cctmp\n\tBEQ .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test3() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a == 0) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSTA cctmp\n\tLDA a+1\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test4() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a != 0) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSTA cctmp\n\tLDA a+1\n\tBNE .ifstart1\n\tLDA cctmp\n\tBEQ .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test5() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a >= 0) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a+1\n\tBMI .ifend1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test6() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (a) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSTA cctmp\n\tLDA a+1\n\tBNE .ifstart1\n\tLDA cctmp\n\tBEQ .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn if_16bits_test7() {
+        let args = sargs(1); 
+        let input = "int a; void main() { if (!a) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA a\n\tSTA cctmp\n\tLDA a+1\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn negate_test1() {
+        let args = sargs(1); 
+        let input = "int a; void main() { a = -a; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("DA #0\n\tSEC\n\tSBC a\n\tSTA a\n\tLDA #0\n\tSBC a+1\n\tSTA a+1"));
+    } 
+    
+    #[test]
+    fn negate_test2() {
+        let args = sargs(1); 
+        let input = "char a; void main() { a = -a; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #0\n\tSEC\n\tSBC a\n\tSTA a"));
+    } 
 }

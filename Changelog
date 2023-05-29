@@ -1,3 +1,9 @@
+v0.6.0 (05/28/2023) :
+    - Implemented 16-bis comparisons (partial)
+    - Corrected a bug in 16-bits negation
+    - Added function return values (in cctmp)
+    - Added NMI interrupt routine support
+
 v0.5.3 (5/25/2023) :
     - Moved processing of literal strings to preprocessor, in order to avoid troubles with comments inside strings
 
