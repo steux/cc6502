@@ -68,6 +68,7 @@ pub struct GeneratorState<'a> {
     deferred_plusplus: Vec<(ExprType<'a>, usize, bool)>,
     pub current_bank: u32,
     pub functions_code: HashMap<String, AssemblyCode>,
+    pub functions_call_tree: HashMap<String, Vec<String>>,
     pub functions_actually_in_use: HashSet<String>,
     pub current_function: Option<String>,
     bankswitching_scheme: &'a str,
@@ -96,6 +97,7 @@ impl<'a, 'b> GeneratorState<'a> {
             deferred_plusplus: Vec::new(),
             current_bank: 0,
             functions_code: HashMap::new(),
+            functions_call_tree: HashMap::new(),
             functions_actually_in_use: HashSet::new(),
             current_function: None,
             bankswitching_scheme,
@@ -1362,8 +1364,6 @@ impl<'a, 'b> GeneratorState<'a> {
                         match self.compiler_state.functions.get(*var) {
                             None => Err(self.compiler_state.syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
-                                // Set this function as actually used
-                                self.functions_actually_in_use.insert(var.to_string());
                                 
                                 let acc_in_use = self.acc_in_use;
                                 if acc_in_use { self.sasm(PHA)?; }
@@ -1399,6 +1399,19 @@ impl<'a, 'b> GeneratorState<'a> {
                                 } else {
                                     return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                 }
+
+                                // Note this function in the call tree
+                                let fx = self.current_function.clone();
+                                if let Some(f) = fx {
+                                    if let Some(v) = self.functions_call_tree.get_mut(&f) {
+                                        v.push(var.to_string());
+                                    } else {
+                                        let mut v = Vec::new();
+                                        v.push(var.to_string());
+                                        self.functions_call_tree.insert(f, v);
+                                    }
+                                }
+
                                 self.flags = FlagsState::Unknown;
                                 if acc_in_use { 
                                     self.sasm(PLA)?; 
@@ -2795,6 +2808,31 @@ impl<'a, 'b> GeneratorState<'a> {
         }
 
         self.purge_deferred_plusplus()?;
+        Ok(())
+    }
+
+    fn function_is_actually_in_use(&self, f: &str, functions_actually_in_use: &mut HashSet<String>) {
+        if functions_actually_in_use.get(f).is_none() {
+            functions_actually_in_use.insert(f.to_string());
+            if let Some(v) = self.functions_call_tree.get(f) {
+                for fx in v {
+                    self.function_is_actually_in_use(fx, functions_actually_in_use);
+                }
+            }
+        }
+    }
+
+    pub fn compute_functions_actually_in_use(&mut self) -> Result<(), Error>
+    {
+        let mut functions_actually_in_use = HashSet::<String>::new();
+        self.function_is_actually_in_use("main", &mut functions_actually_in_use);
+        for i in &self.compiler_state.functions {
+            if i.1.interrupt {
+                self.function_is_actually_in_use(i.0, &mut functions_actually_in_use);
+            }    
+        }
+        debug!("Functions actually in use: {:?}", functions_actually_in_use);
+        self.functions_actually_in_use = functions_actually_in_use;
         Ok(())
     }
 }

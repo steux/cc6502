@@ -1,3 +1,6 @@
+v0.7.0 (06/02/2023) :
+    - Changed interface to actually compute call tree (for linker) 
+
 v0.6.0 (05/28/2023) :
     - Mark functions actually in use (for linker) 
     - Implemented 16-bis comparisons (partial)

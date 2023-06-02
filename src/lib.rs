@@ -1020,4 +1020,42 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDA #32\n\tSTA cctmp\n\t"));
     } 
+    
+    #[test]
+    fn link_test1() {
+        let args = sargs(1); 
+        let input = "void fn1() {}; void fn2() {}; void main() { fn1(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("fn1\tSUBROUTINE"));
+        assert!(!result.contains("fn2\tSUBROUTINE"));
+    } 
+    
+    #[test]
+    fn link_test2() {
+        let args = sargs(1); 
+        let input = "void fn1() {}; void interrupt fn2() {}; void main() { fn1(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("fn1\tSUBROUTINE"));
+        assert!(result.contains("fn2\tSUBROUTINE"));
+    } 
+    
+    #[test]
+    fn link_test3() {
+        let args = sargs(1); 
+        let input = "void fn2(); void fn1() {fn2();}; void fn2() {}; void fn3() {}; void fn4() {}; void main() { fn1(); fn4();}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("fn1\tSUBROUTINE"));
+        assert!(result.contains("fn2\tSUBROUTINE"));
+        assert!(!result.contains("fn3\tSUBROUTINE"));
+        assert!(result.contains("fn4\tSUBROUTINE"));
+    } 
 }

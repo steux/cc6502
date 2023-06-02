@@ -286,6 +286,8 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
         }
     }
 
+    gstate.compute_functions_actually_in_use()?;
+
     // Generate code for all banks
     for b in 0..=maxbank {
         
@@ -364,7 +366,7 @@ Powerup
         
         // Generate functions code
         for f in compiler_state.sorted_functions().iter() {
-            if f.1.code.is_some() && !f.1.inline && f.1.bank == bank {
+            if f.1.code.is_some() && !f.1.inline && f.1.bank == bank && gstate.functions_actually_in_use.get(f.0).is_some() {
                 debug!("Generating code for function #{}", f.0);
 
                 gstate.write(&format!("\n{}\tSUBROUTINE\n", f.0))?;
