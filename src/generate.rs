@@ -776,6 +776,14 @@ impl<'a, 'b> GeneratorState<'a> {
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
                             },
+                            ExprType::Tmp(_) => {
+                                if self.tmp_in_use {
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                }
+                                self.asm(STX, left, pos, high_byte)?;
+                                self.tmp_in_use = true;
+                                return Ok(ExprType::Tmp(false));
+                            },
                             _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
                         }
                     },
@@ -837,6 +845,14 @@ impl<'a, 'b> GeneratorState<'a> {
                                 self.sasm(TYA)?;
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
+                            },
+                            ExprType::Tmp(_) => {
+                                if self.tmp_in_use {
+                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                }
+                                self.asm(STY, left, pos, high_byte)?;
+                                self.tmp_in_use = true;
+                                return Ok(ExprType::Tmp(false));
                             },
                             _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
                         }
@@ -1367,6 +1383,12 @@ impl<'a, 'b> GeneratorState<'a> {
                                 
                                 let acc_in_use = self.acc_in_use;
                                 if acc_in_use { self.sasm(PHA)?; }
+                                let tmp_in_use = self.tmp_in_use;
+                                if tmp_in_use { 
+                                    self.asm(LDA, &ExprType::Tmp(false), pos, false)?; 
+                                    self.sasm(PHA)?;
+                                }
+
                                 if f.interrupt {
                                     return Err(self.compiler_state.syntax_error("Can't call an interrupt routine", pos))
                                 }
@@ -1413,6 +1435,10 @@ impl<'a, 'b> GeneratorState<'a> {
                                 }
 
                                 self.flags = FlagsState::Unknown;
+                                if tmp_in_use { 
+                                    self.sasm(PLA)?;
+                                    self.asm(STA, &ExprType::Tmp(false), pos, false)?; 
+                                }
                                 if acc_in_use { 
                                     self.sasm(PLA)?; 
                                 }

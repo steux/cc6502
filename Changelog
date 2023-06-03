@@ -1,3 +1,6 @@
+v0.7.1 (06/03/2023) :
+    - Corrected a bug: return Y didn't work 
+
 v0.7.0 (06/02/2023) :
     - Changed interface to actually compute call tree (for linker) 
 
