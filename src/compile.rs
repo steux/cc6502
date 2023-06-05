@@ -745,6 +745,9 @@ impl<'a> CompilerState<'a> {
                                     Rule::calc_expr => {
                                         let v = self.parse_calc(px.into_inner())?;
                                         def = VariableDefinition::Value(v);
+                                        if var_type == VariableType::CharPtr && v > 0xff {
+                                            memory = VariableMemory::Ramchip;
+                                        }
                                     },
                                     Rule::array_def => {
                                         start = px.as_span().start();
