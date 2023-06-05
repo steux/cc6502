@@ -345,7 +345,7 @@ mod tests {
     }
     
     #[test]
-    fn switch_test() {
+    fn switch_test1() {
         let args = sargs(1);
         let input = "void main() { switch(X) { case 0: case 1: Y = 0; case 2: Y = 1; break; default: Y = 2; } }";
         let mut output = Vec::new();
@@ -353,6 +353,17 @@ mod tests {
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("CPX #0\n\tBEQ .switchnextstatement2\n\tCPX #1\n\tBEQ .switchnextstatement2\n\tJMP .switchnextcase3\n.switchnextstatement2\n\tLDY #0\n\tJMP .switchnextstatement4\n.switchnextcase3\n\tCPX #2\n\tBNE .switchnextcase5\n.switchnextstatement4\n\tLDY #1\n\tJMP .switchend1\n\tJMP .switchnextstatement6\n.switchnextcase5\n.switchnextstatement6\n\tLDY #2\n.switchend1"));
+    }
+    
+    #[test]
+    fn switch_test2() {
+        let args = sargs(1);
+        let input = "void main() { switch(X) { case 0: Y = 0; break; case 1: Y = 1; } }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("CPX #0\n\tBNE .switchnextcase3\n.switchnextstatement2\n\tLDY #0\n\tJMP .switchend1\n\tJMP .switchnextstatement4\n.switchnextcase3\n\tCPX #1\n\tBNE .switchnextcase5\n.switchnextstatement4\n\tLDY #1\n.switchnextcase5\n.switchend1"));
     }
     
     #[test]

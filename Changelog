@@ -1,4 +1,6 @@
 v0.7.1 (06/05/2023) :
+    - Bug correction : bug bug in switch/case...
+    - Bug correction : tmp was sometimes not released during 16-bits compare
     - Bug correction : registers out of zeropage are set to ramchip memory (instead of zeropage)
     - Corrected a bug: return Y didn't work 
 

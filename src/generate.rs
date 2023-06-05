@@ -2014,7 +2014,7 @@ impl<'a, 'b> GeneratorState<'a> {
             }
             f = self.generate_arithm(l, &Operation::Sub(false), r, pos, true)?;
         }
-        match op {
+        let res = match op {
             Operation::Eq => {
                 let ifstart_label = format!(".ifstart{}", self.local_label_counter_if);
                 self.local_label_counter_if += 1;
@@ -2046,7 +2046,9 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.label(&ifstart_label)
             },
             _ => unreachable!()
-        }
+        };
+        self.tmp_in_use = false;
+        res
     }
     
     fn generate_condition_ex(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>, pos: usize, negate: bool, label: &str) -> Result<(), Error>
@@ -2548,6 +2550,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
         self.local_label_counter_if += 1;
         let mut switchnextstatement_label = format!(".switchnextstatement{}", self.local_label_counter_if);
+        debug!("Cases : {:?}", cases);
         for (case, is_last_element) in cases.iter().enumerate().map(|(i,c)| (c, i == cases.len() - 1)) {
             self.local_label_counter_if += 1;
             let switchnextcase_label = format!(".switchnextcase{}", self.local_label_counter_if);

@@ -468,7 +468,7 @@ impl<'a> CompilerState<'a> {
                 let mut cases = Vec::<(Vec<i32>, Vec<StatementLoc<'a>>)>::new();
                 let expr = self.parse_expr(p.next().unwrap().into_inner())?;
                 let c = p.next().unwrap().into_inner();
-                //debug!("Cases: {:?}", c);
+                debug!("Cases: {:?}", c);
                 let mut case_set = (Vec::<i32>::new(), Vec::<StatementLoc<'a>>::new());
                 let mut last_was_a_statement = false;
                 for i in c {
@@ -477,6 +477,7 @@ impl<'a> CompilerState<'a> {
                             if last_was_a_statement {
                                 cases.push(case_set.clone());
                                 case_set = (Vec::<i32>::new(), Vec::<StatementLoc<'a>>::new());
+                                last_was_a_statement = false;
                             }
                             case_set.0.push(parse_int(i.into_inner().next().unwrap()));
                         },
@@ -497,9 +498,13 @@ impl<'a> CompilerState<'a> {
                                 }
                             }
                             cases.push(default_set);
+                            last_was_a_statement = false;
                         },
                         _ => unreachable!()
                     }
+                }
+                if last_was_a_statement {
+                    cases.push(case_set.clone());
                 }
                 Ok(StatementLoc {
                     pos, label: None, statement: Statement::Switch {
