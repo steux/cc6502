@@ -1,3 +1,7 @@
+v0.7.2 (06/07/2023) :
+    - Bug correction: avoided panic when inline function is not defined before use
+    - Bug correction: removed optimization around JSR
+
 v0.7.1 (06/05/2023) :
     - Bug correction : big bug in switch/case...
     - Bug correction : tmp was sometimes not released during 16-bits compare

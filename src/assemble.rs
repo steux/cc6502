@@ -411,7 +411,11 @@ impl AssemblyCode {
                         AsmMnemonic::ADC | AsmMnemonic::SBC | AsmMnemonic::EOR | AsmMnemonic::AND | AsmMnemonic::ORA => accumulator = None,
                         AsmMnemonic::LSR | AsmMnemonic::ASL => accumulator = None,
                         AsmMnemonic::PLA | AsmMnemonic::PHA => accumulator = None,
-                        AsmMnemonic::JSR | AsmMnemonic::JMP => accumulator = None,
+                        AsmMnemonic::JSR | AsmMnemonic::JMP => {
+                            accumulator = None;
+                            x_register = None;
+                            y_register = None;
+                        },
                         _ => ()
                     }
                 } else { unreachable!(); }

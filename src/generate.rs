@@ -489,10 +489,13 @@ impl<'a, 'b> GeneratorState<'a> {
     } 
 
     // Inline code
-    fn push_code(&mut self, f: &str) -> Result<(), Error> {
+    fn push_code(&mut self, f: &str, pos: usize) -> Result<(), Error> {
         self.inline_label_counter += 1;
         if let Some(fx) = &self.current_function {
-            let code2: AssemblyCode = self.functions_code.get(f).unwrap().clone();
+            let code2: AssemblyCode = match self.functions_code.get(f) {
+                None => return Err(self.compiler_state.syntax_error("Inline function must be defined before use", pos)),
+                Some(c) => c.clone()
+            };
             let code : &mut AssemblyCode = self.functions_code.get_mut(fx).unwrap();
             code.append_code(&code2, self.inline_label_counter);
         }
@@ -1394,7 +1397,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 }
                                 if f.inline {
                                     if f.code.is_some() {
-                                        self.push_code(var)?;
+                                        self.push_code(var, pos)?;
                                     } else {
                                         return Err(self.compiler_state.syntax_error("Undefined function", pos));
                                     }
