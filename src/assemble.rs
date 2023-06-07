@@ -227,6 +227,7 @@ impl AssemblyCode {
             // For each iteration of this loop, first must point to an Instruction
             // and second point to the next asm line
             let mut remove_both = false;
+            let mut remove_first = false;
             let mut remove_second = false;
             
             // Make sure second points also to an instruction
@@ -282,6 +283,13 @@ impl AssemblyCode {
                     // Remove STA followed by LDA
                     if i1.mnemonic == AsmMnemonic::STA && i2.mnemonic == AsmMnemonic::LDA && i1.dasm_operand == i2.dasm_operand && !i2.protected {
                         remove_second = true;
+                    }
+                    // Remove LDA followed by STA
+                    if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::STA && i1.dasm_operand == i2.dasm_operand && !i2.protected {
+                        remove_second = true;
+                    }
+                    if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::LDA {
+                        remove_first = true;
                     }
                     // Check CMP and remove the branck if the result is obvious
                     if let Some(r) = accumulator {
@@ -456,6 +464,11 @@ impl AssemblyCode {
             } else if remove_second {
                 *second.unwrap() = AsmLine::Dummy;
                 removed_instructions += 1;
+                second = iter.next();
+            } else if remove_first {
+                *first.unwrap() = AsmLine::Dummy;
+                removed_instructions += 1;
+                first = second;
                 second = iter.next();
             } else {
                 first = second;
