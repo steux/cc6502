@@ -23,6 +23,16 @@
 // DONE: implement 16 bits comparison
 // DONE: Add function return values (in cctmp)
 // DONE: Mark functions as used or not for the linker
+// DONE: Implement better optimized 16 bits increment:
+//        inc     ptr
+//        bne     :+
+//        inc     ptr+1
+//+       rts
+// Decrement :;
+//      LDA NUML
+//      BNE LABEL
+//      DEC NUMH
+//LABEL DEC NUML 
 
 mod cpp;
 pub mod error;
@@ -165,7 +175,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA i+1\n\tLDA i\n\tCLC\n\tADC #1\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1\n\tLDA i\n\tSTA j\n\tLDA i+1\n\tSTA j+1"));
+        assert!(result.contains("LDA #0\n\tSTA i\n\tSTA i+1\n\tINC i\n\tBNE .ifend1\n\tINC i+1\n.ifend1\n\tLDA i\n\tSTA j\n\tLDA i+1\n\tSTA j+1"));
     }
     
     #[test]
@@ -539,7 +549,7 @@ void main()
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tSEC\n\tSBC #1\n\tSTA i\n\tLDA i+1\n\tSBC #0\n\tSTA i+1"));
+        assert!(result.contains("LDA i\n\tBNE .ifend1\n\tDEC i+1\n.ifend1\n\tDEC i"));
     }
     
     #[test]
