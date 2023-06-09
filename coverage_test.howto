@@ -1,0 +1,9 @@
+rustup install llvm-tools-preview
+cargo install cargo-binutils
+cargo install rustfilt
+cargo clean
+RUSTFLAGS="-C instrument-coverage" cargo test
+llvm-profdata merge -sparse default_*.profraw -o json5format.profdata
+llvm-cov report --use-color --ignore-filename-regex='/.cargo/registry' --instr-profile=json5format.profdata --object target/debug/deps/cc6502-563bd4b0dfb57d5a
+llvm-cov show --use-color --ignore-filename-regex='/.cargo/registry' --instr-profile=json5format.profdata --object target/debug/deps/cc6502-563bd4b0dfb57d5a --show-instantiations --show-line-counts-or-regions     --Xdemangler=rustfilt | less -R
+
