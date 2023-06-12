@@ -78,11 +78,8 @@ impl<'a, 'b> GeneratorState<'a> {
                         match self.compiler_state.functions.get(*var) {
                             None => Err(self.compiler_state.syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
-                                
-                                let acc_in_use = self.acc_in_use;
-                                if acc_in_use { self.sasm(PHA)?; }
-                                let tmp_in_use = self.tmp_in_use;
-                                if tmp_in_use { 
+                                if self.acc_in_use { self.sasm(PHA)?; }
+                                if self.tmp_in_use { 
                                     self.asm(LDA, &ExprType::Tmp(false), pos, false)?; 
                                     self.sasm(PHA)?;
                                 }
@@ -133,23 +130,29 @@ impl<'a, 'b> GeneratorState<'a> {
                                 }
 
                                 self.flags = FlagsState::Unknown;
-                                if tmp_in_use { 
-                                    self.sasm(PLA)?;
-                                    self.asm(STA, &ExprType::Tmp(false), pos, false)?; 
-                                }
-                                if acc_in_use { 
-                                    self.sasm(PLA)?; 
-                                }
                                 // Manage return value
                                 if f.return_type.is_some() {
                                     if self.tmp_in_use {
                                         return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
-                                    self.tmp_in_use = true;
-                                    Ok(ExprType::Tmp(f.return_signed)) 
-                                } else {
-                                    Ok(ExprType::Nothing)
+                                    if self.acc_in_use {
+                                        self.asm(STA, &ExprType::Tmp(f.return_signed), pos, false)?; 
+                                        self.sasm(PLA)?; 
+                                        self.tmp_in_use = true;
+                                        return Ok(ExprType::Tmp(f.return_signed));
+                                    } else {
+                                        return Ok(ExprType::A(f.return_signed));
+                                    }
                                 }
+
+                                if self.tmp_in_use { 
+                                    self.sasm(PLA)?;
+                                    self.asm(STA, &ExprType::Tmp(false), pos, false)?; 
+                                }
+                                if self.acc_in_use { 
+                                    self.sasm(PLA)?; 
+                                }
+                                Ok(ExprType::Nothing)
                             }
                         }
                     },
@@ -481,7 +484,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     if e == ExprType::Nothing {
                         return Err(self.compiler_state.syntax_error("Function must return a value", pos))
                     } else {
-                        self.generate_assign(&ExprType::Tmp(f.return_signed), &e, pos, false)?;
+                        self.generate_assign(&ExprType::A(f.return_signed), &e, pos, false)?;
                     }
                 } else {
                     if e != ExprType::Nothing {
@@ -493,6 +496,8 @@ impl<'a, 'b> GeneratorState<'a> {
             unreachable!();
         }
         self.sasm(RTS)?;
+        self.acc_in_use = false;
+        self.tmp_in_use = false;
         Ok(())
     }
 

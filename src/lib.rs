@@ -26,8 +26,7 @@
 // DONE: Implement better optimized 16 bits increment
 // DONE: Detect & 0xff and return lower 8 bits
 // TODO: Detect 16 bits aithm bad carry propagation
-// TODO: Implement function return in Acc
-
+// DONE: Implement function return in Acc
 
 mod cpp;
 pub mod error;
@@ -923,8 +922,8 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("f\tSUBROUTINE\n\tLDA #2\n\tSTA cctmp\n\tRTS"));
-        assert!(result.contains("JSR f\n\tLDY cctmp"));
+        assert!(result.contains("f\tSUBROUTINE\n\tLDA #2\n\tRTS"));
+        assert!(result.contains("JSR f\n\tTAY"));
     } 
     
     #[test]
@@ -935,8 +934,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("f\tSUBROUTINE\n\tSTY cctmp\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tJSR f\n\tLDY cctmp"));
-        assert!(result.contains("JSR f\n\tLDY cctmp"));
+        assert!(result.contains("f\tSUBROUTINE\n\tTYA\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tJSR f\n\tTAY"));
     } 
     
     #[test]
