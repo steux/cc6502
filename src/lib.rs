@@ -25,7 +25,7 @@
 // DONE: Mark functions as used or not for the linker
 // DONE: Implement better optimized 16 bits increment
 // DONE: Detect & 0xff and return lower 8 bits
-// TODO: Detect 16 bits aithm bad carry propagation
+// DONE: Detect 16 bits aithm bad carry propagation
 // DONE: Implement function return in Acc
 
 mod cpp;
@@ -1138,6 +1138,15 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA x\n\tAND #0\n\tTAY"));
+    } 
+    
+    #[test]
+    fn carry_propagation_error_test() {
+        let args = sargs(1); 
+        let input = "short x, y; void main() { x += y + 1; }";
+        let mut output = Vec::new();
+        let result = compile(input.as_bytes(), &mut output, &args, simple_build);
+        assert!(result.is_err());
     } 
     
 }

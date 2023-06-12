@@ -56,6 +56,7 @@ impl<'a, 'b> GeneratorState<'a> {
             current_function: None,
             bankswitching_scheme,
             protected: false,
+            carry_propagation_error: false,
         }
     }
     

@@ -72,6 +72,7 @@ pub struct GeneratorState<'a> {
     pub current_function: Option<String>,
     bankswitching_scheme: &'a str,
     protected: bool,
+    carry_propagation_error: bool,
 }
 
 pub mod generate_asm;

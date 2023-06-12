@@ -34,6 +34,12 @@ impl<'a, 'b> GeneratorState<'a> {
         let left;
         let right;
 
+        // Carry propagation error detection
+        if self.carry_propagation_error && high_byte {
+            return Err(self.compiler_state.syntax_error("Carry propagation too complex for the compiler. Please introduce temp variables to simplify your calculations", pos))
+        }
+        self.carry_propagation_error = high_byte;
+
         match op {
             Operation::Sub(_) | Operation::Div(_) => {
                 left = l; right = r;
