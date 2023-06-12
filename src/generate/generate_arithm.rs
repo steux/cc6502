@@ -92,16 +92,29 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             ExprType::Absolute(variable, eight_bits, off) => {
                 let v = self.compiler_state.get_variable(variable);
-                if let ExprType::Immediate(r) = right {
+                if let ExprType::Immediate(r) = right2 {
                     if v.var_type == VariableType::CharPtr && !*eight_bits && v.var_const {
                         match op {
                             Operation::Add(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off + *r)),
                             Operation::Sub(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off - *r)),
-                            Operation::And(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off & *r)),
-                            Operation::Or(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off | *r)),
-                            Operation::Xor(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off ^ *r)),
-                            Operation::Mul(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off * *r)),
-                            Operation::Div(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off / *r)),
+                            Operation::And(_) => if *r == 255 {
+                                if high_byte {
+                                    return Ok(ExprType::Immediate(0));
+                                } else {
+                                    return Ok(ExprType::Absolute(variable, true, *off));
+                                }
+                            },
+                            _ => (),
+                        } 
+                    } else if v.var_type == VariableType::Short && !*eight_bits {
+                        match op {
+                            Operation::And(_) => if *r == 255 {
+                                if high_byte {
+                                    return Ok(ExprType::Immediate(0));
+                                } else {
+                                    return Ok(ExprType::Absolute(variable, true, *off));
+                                }
+                            },
                             _ => (),
                         } 
                     }
@@ -169,7 +182,11 @@ impl<'a, 'b> GeneratorState<'a> {
         };
         match right2 {
             ExprType::Immediate(v) => {
-                if *v != 0 || high_byte { self.asm(operation, right2, pos, high_byte)?; };
+                if high_byte || operation != AND || *v != 0xff {
+                    if *v != 0 || operation == AND || high_byte { 
+                        self.asm(operation, right2, pos, high_byte)?; 
+                    };
+                }
             },
             ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
                 self.asm(operation, right2, pos, high_byte)?;

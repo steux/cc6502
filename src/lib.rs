@@ -23,16 +23,11 @@
 // DONE: implement 16 bits comparison
 // DONE: Add function return values (in cctmp)
 // DONE: Mark functions as used or not for the linker
-// DONE: Implement better optimized 16 bits increment:
-//        inc     ptr
-//        bne     :+
-//        inc     ptr+1
-//+       rts
-// Decrement :;
-//      LDA NUML
-//      BNE LABEL
-//      DEC NUMH
-//LABEL DEC NUML 
+// DONE: Implement better optimized 16 bits increment
+// DONE: Detect & 0xff and return lower 8 bits
+// TODO: Detect 16 bits aithm bad carry propagation
+// TODO: Implement function return in Acc
+
 
 mod cpp;
 pub mod error;
@@ -1091,4 +1086,60 @@ char i; void main() { i = one; }";
         assert!(!result.contains("fn3\tSUBROUTINE"));
         assert!(result.contains("fn4\tSUBROUTINE"));
     } 
+    
+    #[test]
+    fn bnot_test() {
+        let args = sargs(1); 
+        let input = "void main() { X = ~Y; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("TYA\n\tEOR #255\n\tTAX"));
+    } 
+    
+    #[test]
+    fn and_test1() {
+        let args = sargs(1); 
+        let input = "char *x; void main() { Y = x & 0xff; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA x\n\tTAY"));
+    } 
+    
+    #[test]
+    fn and_test2() {
+        let args = sargs(1); 
+        let input = "short x; void main() { Y = x & 0xff; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDY x\n"));
+    } 
+    
+    #[test]
+    fn and_test3() {
+        let args = sargs(1); 
+        let input = "short x, y; void main() { y = x & 0xff; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA x\n\tSTA y\n\tLDA #0\n\tSTA y+1\n"));
+    } 
+    
+    #[test]
+    fn and_test4() {
+        let args = sargs(1); 
+        let input = "short x; void main() { Y = x & 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA x\n\tAND #0\n\tTAY"));
+    } 
+    
 }
