@@ -68,7 +68,7 @@ pub struct Args {
     pub output: String,
 
     /// Insert C code as comments
-    #[arg(long, default_value="true")]
+    #[arg(long, default_value="false")]
     pub insert_code: bool,
 
     /// Set char signedness to signed
@@ -488,6 +488,30 @@ void main()
     }
     
     #[test]
+    fn array_of_pointers_test4() {
+        let args = sargs(1);
+        let input = "
+const char s1[] = {0};
+const char s2[] = {0};
+const char *ss[] = {s1, s2};
+
+char *ptr;
+char v;
+
+void main()
+{
+    ptr = ss[v];
+    v = ptr[v];
+}
+            ";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("STY cctmp\n\tLDY v\n\tLDA ss,Y\n\tSTA ptr\n\tLDY v\n\tLDA ss+2,Y\n\tSTA ptr+1\n\tLDY v\n\tLDA (ptr),Y\n\tSTA v\n\tLDY cctmp"));
+    }
+    
+    #[test]
     fn longbranch_test() {
         let args = sargs(1);
         let mut input: String = "void main() { do {".to_string();
@@ -873,12 +897,12 @@ char i; void main() { i = one; }";
     #[test]
     fn sizeof_test() {
         let args = sargs(1);
-        let input = "char arr1[3]; char *arr2[3]; const char *ptr[] = { arr1 }; void main() { X = sizeof(arr1); Y = sizeof(arr2); Y = sizeof(ptr); }";
+        let input = "char arr1[3]; char *arr2[3]; const char *ptr[] = { arr1 }; void main() { X = sizeof(arr1); Y = sizeof(arr2); X = sizeof(ptr); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDX #3\n\tLDY #6\n\tLDY #2"));
+        assert!(result.contains("LDX #3\n\tLDY #6\n\tLDX #2"));
     }
     
     #[test]

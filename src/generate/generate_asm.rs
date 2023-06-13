@@ -57,6 +57,7 @@ impl<'a, 'b> GeneratorState<'a> {
             bankswitching_scheme,
             protected: false,
             carry_propagation_error: false,
+            saved_y: false
         }
     }
     
@@ -442,6 +443,31 @@ impl<'a, 'b> GeneratorState<'a> {
         }
         Ok(()) 
     } 
+
+    pub fn dummy(&mut self) -> Option<usize> {
+        if let Some(f) = &self.current_function {
+            let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
+            Some(code.append_dummy())
+        } else {
+            None
+        }
+    }
+
+    pub fn asm_save_y(&mut self, line: usize) {
+        if let Some(f) = &self.current_function {
+            let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
+            let instruction = AsmInstruction { mnemonic: STY, dasm_operand: "cctmp".into(), cycles: 3, cycles_alt: None, nb_bytes: 2, protected: false };
+            code.set(line, instruction);
+        }
+    }
+
+    pub fn asm_restore_y(&mut self) {
+        if let Some(f) = &self.current_function {
+            let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
+            let instruction = AsmInstruction { mnemonic: LDY, dasm_operand: "cctmp".into(), cycles: 3, cycles_alt: None, nb_bytes: 2, protected: false };
+            code.append_asm(instruction);
+        }
+    }
 
     // Inline code
     pub fn push_code(&mut self, f: &str, pos: usize) -> Result<(), Error> {

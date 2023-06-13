@@ -1,3 +1,6 @@
+v0.7.4 (06/13/2023) :
+    - Experimental: now accepts any subscript expression (not only X and Y)
+
 v0.7.3 (06/12/2023) :
     - Detect carry propagation errors in 16 bits arithmetics code
     - Implmented function return in accumulator

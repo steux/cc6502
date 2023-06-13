@@ -28,7 +28,13 @@ use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a, 'b> GeneratorState<'a> {
 
-    fn purge_deferred_plusplus(&mut self) -> Result<(), Error> {
+    fn purge_deferred_plusplus_and_savey(&mut self) -> Result<(), Error> {
+        if self.saved_y {
+            self.asm_restore_y();
+            self.saved_y = false;
+            self.tmp_in_use = false;
+        }
+
         let def = self.deferred_plusplus.clone();
         self.deferred_plusplus.clear();
         for d in def {
@@ -219,6 +225,11 @@ impl<'a, 'b> GeneratorState<'a> {
                         let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
                         let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
                         let ret = self.generate_assign(&left, &right, pos, high_byte);
+                        if self.saved_y {
+                            self.asm_restore_y();
+                            self.saved_y = false;
+                            self.tmp_in_use = false;
+                        }
                         if !high_byte {
                             match left {
                                 ExprType::Absolute(_, eight_bits, _) =>  if !eight_bits {
@@ -290,7 +301,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     Operation::TernaryCond2 => return Err(self.compiler_state.syntax_error("Unexpected ':'. Probably a ';' typo", pos)),
                     Operation::Comma => {
                         self.generate_expr(lhs, pos, false, false)?;
-                        self.purge_deferred_plusplus()?;
+                        self.purge_deferred_plusplus_and_savey()?;
                         self.acc_in_use = false;
                         self.tmp_in_use = false;
                         self.generate_expr(rhs, pos, false, false)
@@ -303,6 +314,10 @@ impl<'a, 'b> GeneratorState<'a> {
                     "Y" => Ok(ExprType::Y),
                     variable => {
                         let v = self.compiler_state.get_variable(variable);
+                        let dummy = if let Expr::Nothing = **sub { None } else {
+                            self.dummy()
+                        };
+                        let tmp_in_use = self.tmp_in_use;
                         let sub_output = self.generate_expr(sub, pos, false, high_byte)?;
                         match sub_output {
                             ExprType::Nothing => if let VariableDefinition::Value(val) = &v.def {
@@ -339,9 +354,32 @@ impl<'a, 'b> GeneratorState<'a> {
                                     Ok(ExprType::Absolute(variable, v.var_type != VariableType::CharPtrPtr && v.var_type != VariableType::ShortPtr, val))
                                 }
                             } else {
-                                Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
+                                if tmp_in_use || self.tmp_in_use || self.saved_y {
+                                    Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                } else if let Some(dummy_pos) = dummy {
+                                    self.tmp_in_use = true;
+                                    self.asm_save_y(dummy_pos);
+                                    self.asm(LDY, &sub_output, pos, false)?;
+                                    self.saved_y = true;
+                                    Ok(ExprType::AbsoluteY(variable))
+                                } else {
+                                    Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                }
                             },
-                            _ => Err(self.compiler_state.syntax_error("Subscript not allowed (only X, Y and constants are allowed)", pos))
+                            _ => {
+                                if tmp_in_use || self.tmp_in_use || self.saved_y {
+                                    Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                } else if let Some(dummy_pos) = dummy {
+                                    self.tmp_in_use = true;
+                                    self.asm_save_y(dummy_pos);
+                                    self.asm(LDY, &sub_output, pos, false)?;
+                                    self.saved_y = true;
+                                    Ok(ExprType::AbsoluteY(variable))
+                                } else {
+                                    Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                }
+
+                            }
                         }
                     },
                 }
@@ -394,14 +432,14 @@ impl<'a, 'b> GeneratorState<'a> {
         let forupdate_label = format!(".forupdate{}", self.local_label_counter_for);
         let forend_label = format!(".forend{}", self.local_label_counter_for);
         self.generate_expr(init, pos, false, false)?;
-        self.purge_deferred_plusplus()?;
+        self.purge_deferred_plusplus_and_savey()?;
         self.loops.push((forupdate_label.clone(), forend_label.clone(), false));
         self.generate_condition(condition, pos, true, &forend_label, false)?;
         self.label(&for_label)?;
         self.generate_statement(body)?;
         self.label(&forupdate_label)?;
         self.generate_expr(update, pos, false, false)?;
-        self.purge_deferred_plusplus()?;
+        self.purge_deferred_plusplus_and_savey()?;
         self.generate_condition(condition, pos, false, &for_label, false)?;
         self.label(&forend_label)?;
         self.loops.pop();
@@ -604,7 +642,7 @@ impl<'a, 'b> GeneratorState<'a> {
             }
         }
 
-        self.purge_deferred_plusplus()?;
+        self.purge_deferred_plusplus_and_savey()?;
 
         self.acc_in_use = false;
         self.tmp_in_use = false;
@@ -658,7 +696,7 @@ impl<'a, 'b> GeneratorState<'a> {
             Statement::Goto(s) => { self.generate_goto_statement(s)?; }
         }
 
-        self.purge_deferred_plusplus()?;
+        self.purge_deferred_plusplus_and_savey()?;
         Ok(())
     }
 

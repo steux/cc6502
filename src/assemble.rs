@@ -154,6 +154,15 @@ impl AssemblyCode {
         self.code.push(AsmLine::Comment(s));
     }
 
+    pub fn append_dummy(&mut self) -> usize {
+        self.code.push(AsmLine::Dummy);
+        self.code.len() - 1
+    }
+
+    pub fn set(&mut self, line: usize, inst: AsmInstruction) {
+        *self.code.get_mut(line).unwrap() = AsmLine::Instruction(inst);   
+    }
+    
     // For inlined code: modify local labels in each instruction
     pub fn append_code(&mut self, code: &AssemblyCode, inline_counter: u32)  {
         for i in &code.code {
@@ -195,7 +204,6 @@ impl AssemblyCode {
         let mut y_register = None;
         let mut iter = self.code.iter_mut();
         let mut first = iter.next();
-        let mut second = iter.next();
 
         loop {
             match &first {
@@ -204,6 +212,8 @@ impl AssemblyCode {
                 _ => first = iter.next(),
             }
         }
+        let mut second = iter.next();
+
         // Analyze the first instruction to check for a load
         if let Some(AsmLine::Instruction(inst)) = &first {
             if inst.dasm_operand.starts_with('#') {
@@ -288,7 +298,21 @@ impl AssemblyCode {
                     if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::STA && i1.dasm_operand == i2.dasm_operand && !i2.protected {
                         remove_second = true;
                     }
-                    if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::LDA {
+                    // Remove LDY followed by STY
+                    if i1.mnemonic == AsmMnemonic::LDY && i2.mnemonic == AsmMnemonic::STY && i1.dasm_operand == i2.dasm_operand && !i2.protected {
+                        remove_second = true;
+                    }
+                    // Remove LDX followed by STX
+                    if i1.mnemonic == AsmMnemonic::LDX && i2.mnemonic == AsmMnemonic::STX && i1.dasm_operand == i2.dasm_operand && !i2.protected {
+                        remove_second = true;
+                    }
+                    if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::LDA && !i1.protected {
+                        remove_first = true;
+                    }
+                    if i1.mnemonic == AsmMnemonic::LDY && i2.mnemonic == AsmMnemonic::LDY && !i1.protected {
+                        remove_first = true;
+                    } 
+                    if i1.mnemonic == AsmMnemonic::LDX && i2.mnemonic == AsmMnemonic::LDX && !i1.protected {
                         remove_first = true;
                     }
                     // Check CMP and remove the branck if the result is obvious
