@@ -507,7 +507,7 @@ pub fn process<I: BufRead, O: Write>(
                                 let vx = v.trim_start();
                                 let re = Regex::new(&format!("\\b{}\\b", vx)).unwrap();
                                 value = re.replace_all(&value, format!("$${}",vx)).to_string();
-                                rex += &format!("(?P<{}>[^,]*),", vx);
+                                rex += &format!("(?P<{}>[^,]*?),", vx);
                                 //rex += &format!("(?P<{}>([^,\"](\"[^\"]*\")?)*),", vx);
                             }
                             rex = rex.strip_suffix(',').unwrap().to_string();

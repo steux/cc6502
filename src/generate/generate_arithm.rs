@@ -34,12 +34,6 @@ impl<'a, 'b> GeneratorState<'a> {
         let left;
         let right;
 
-        // Carry propagation error detection
-        if self.carry_propagation_error && high_byte {
-            return Err(self.compiler_state.syntax_error("Carry propagation too complex for the compiler. Please introduce temp variables to simplify your calculations", pos))
-        }
-        self.carry_propagation_error = high_byte;
-
         match op {
             Operation::Sub(_) | Operation::Div(_) => {
                 left = l; right = r;
@@ -164,6 +158,11 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.sasm(CLC)?;
                 }
                 self.carry_flag_ok = false;
+                // Carry propagation error detection
+                if self.carry_propagation_error && high_byte {
+                    return Err(self.compiler_state.syntax_error("Carry propagation too complex for the compiler. Please introduce temp variables to simplify your calculations", pos))
+                }
+                self.carry_propagation_error = high_byte;
                 ADC
             },
             Operation::Sub(_) => {
@@ -171,6 +170,11 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.sasm(SEC)?;
                 }
                 self.carry_flag_ok = true;
+                // Carry propagation error detection
+                if self.carry_propagation_error && high_byte {
+                    return Err(self.compiler_state.syntax_error("Carry propagation too complex for the compiler. Please introduce temp variables to simplify your calculations", pos))
+                }
+                self.carry_propagation_error = high_byte;
                 SBC
             },
             Operation::And(_) => {
