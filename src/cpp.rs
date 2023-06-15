@@ -115,6 +115,7 @@ impl Context {
         }
         self
     }
+
     /// 
     pub fn undefine<N: Into<String>>(&mut self, name: N) -> &mut Self {
         let n = name.into();
@@ -140,6 +141,7 @@ impl Context {
         self.regex_sets[k] = RegexSet::new(&self.defs_ex_ex[k]).unwrap();
         self
     }
+
     /// Gets a macro that may or may not be defined from a context.
     pub fn get_macro<N: Into<String>>(&self, name: N) -> Option<&String> {
         self.defs.get(&name.into())
@@ -147,12 +149,20 @@ impl Context {
 
     pub fn replace_all(&self, s: &str) -> String {
         let mut res = String::from(s);
-        for (i, set) in self.regex_sets.iter().enumerate() {
-            for idx in set.matches(s).into_iter() {
-                let x = self.regexes[i][idx].0.replace_all(&res, &self.regexes[i][idx].1);
-                if let Cow::Owned(z) = x {
-                    res = z.to_string();
+        let mut changed;
+        loop {
+            changed = false;
+            for (i, set) in self.regex_sets.iter().enumerate() {
+                for idx in set.matches(s).into_iter() {
+                    let x = self.regexes[i][idx].0.replace_all(&res, &self.regexes[i][idx].1);
+                    if let Cow::Owned(z) = x {
+                        res = z.to_string();
+                        changed = true;
+                    }
                 }
+            }
+            if !changed {
+                break;
             }
         }
         res
@@ -161,6 +171,7 @@ impl Context {
     fn skip_whitespace(&self, expr: &mut &str) {
         *expr = expr.trim_start();
     }
+
     fn eval_term(&self, expr: &mut &str, line: u32) -> Result<bool, Error> {
         self.skip_whitespace(expr);
 
@@ -507,8 +518,8 @@ pub fn process<I: BufRead, O: Write>(
                                 let vx = v.trim_start();
                                 let re = Regex::new(&format!("\\b{}\\b", vx)).unwrap();
                                 value = re.replace_all(&value, format!("$${}",vx)).to_string();
-                                rex += &format!("(?P<{}>[^,]*?),", vx);
-                                //rex += &format!("(?P<{}>([^,\"](\"[^\"]*\")?)*),", vx);
+                                //rex += &format!("(?P<{}>[^,]*?),", vx);
+                                rex += &format!(r"(?P<{}>(?:[^,)(]|\((?:[^)(]|\((?:[^)(]|\((?:[^)(]|\([^)(]*\))*\))*\))*\))*),", vx);
                             }
                             rex = rex.strip_suffix(',').unwrap().to_string();
                         }
