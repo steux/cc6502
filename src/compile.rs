@@ -185,7 +185,7 @@ pub struct CompilerState<'a> {
     calculator: PrattParser<Rule>,
     mapped_lines: &'a Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>,
     pub preprocessed_utf8: &'a str,
-    pub included_assembler: Vec<String>,
+    pub included_assembler: Vec::<(String, Option<String>, Option<usize>)>,
     pub context: cpp::Context,
     signed_chars: bool,
     literal_counter: usize,
@@ -1007,7 +1007,20 @@ impl<'a> CompilerState<'a> {
                 },
                 Rule::included_assembler => {
                     //debug!("Assembler: {:?}", pair);
-                    self.included_assembler.push(pair.into_inner().next().unwrap().as_str().to_string());
+                    let str = pair.into_inner().next().unwrap().as_str();
+                    let mut filename = None;
+                    let mut codesize = None;
+                    let mut split = str.split('\n');
+                    for _ in 0..3 {
+                        let line = split.next().unwrap();
+                        if line.trim().starts_with("; file: ") {
+                            filename = Some(line.split_at(8).1.into()); 
+                        }
+                        if line.trim().starts_with("; codesize: ") {
+                            codesize = line.split_at(12).1.parse::<usize>().ok(); 
+                        }
+                    }
+                    self.included_assembler.push((str.into(), filename, codesize));
                 },
                 _ => {
                     debug!("What's this ? {:?}", pair);
@@ -1128,7 +1141,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
 
     // Start preprocessor
     //debug!("Preprocessor");
-    let mapped_lines = cpp::process(input, &mut preprocessed, &mut context)?;
+    let mapped_lines = cpp::process(input, &mut preprocessed, &mut context, false)?;
     debug!("Mapped lines = {:?}", mapped_lines);
 
     let preprocessed_utf8 = std::str::from_utf8(&preprocessed)?;
@@ -1141,7 +1154,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         pratt, calculator,
         mapped_lines: &mapped_lines,
         preprocessed_utf8,
-        included_assembler: Vec::<String>::new(),
+        included_assembler: Vec::<(String, Option<String>, Option<usize>)>::new(),
         context,
         signed_chars: args.signed_chars,
         literal_counter: 0,

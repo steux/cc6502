@@ -360,7 +360,7 @@ Powerup
 
             // Generate included assembler
             for asm in &compiler_state.included_assembler {
-                gstate.write(asm)?;
+                gstate.write(&asm.0)?;
             }
         }
         

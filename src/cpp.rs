@@ -256,7 +256,7 @@ enum State {
 #[allow(dead_code)]
 pub fn process_str(input: &str, context: &mut Context) -> Result<String, Error> {
     let mut output = Vec::new();
-    process(input.as_bytes(), &mut output, context)?;
+    process(input.as_bytes(), &mut output, context, false)?;
     Ok(String::from_utf8(output).expect("Input was utf8, so output should be too..."))
 }
 
@@ -268,6 +268,7 @@ pub fn process<I: BufRead, O: Write>(
     mut input: I,
     output: &mut O,
     context: &mut Context,
+    asm: bool
 ) -> Result<Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>, Error> {
     let mut buf = String::new();
     let mut uncommented_buf = String::new();
@@ -333,7 +334,7 @@ pub fn process<I: BufRead, O: Write>(
                 let mut s = remaining.split("//").next().unwrap().splitn(2, "/*");
                 // Is there a string start before that point ?
                 let s2 = s.next().unwrap();
-                if !s2.starts_with("#include") {
+                if !s2.starts_with("#include") && !asm {
                     if let Some((left, _)) = s2.split_once('"') {
                         // We have a string start
                         // Let's find the end of the string
@@ -590,11 +591,12 @@ pub fn process<I: BufRead, O: Write>(
                                 if assembler {
                                     lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                                     output.write_all("=== ASSEMBLER BEGIN ===\n".as_bytes())?;
+                                    output.write_all(format!("; file: {}\n", fname).as_bytes())?;
                                 }
                                 let f = BufReader::new(f);
                                 context.current_filename = fname.clone();
                                 context.includes_stack.push((filename.clone(), line));
-                                let mut mapped_lines = process(f, output, context)?;
+                                let mut mapped_lines = process(f, output, context, assembler)?;
                                 context.includes_stack.pop();
                                 context.current_filename = filename.clone();
                                 lines.append(&mut mapped_lines);
@@ -1094,7 +1096,7 @@ mod tests {
             #ifdef FOO
                 foo text
             #endif
-            FOO bar text".as_bytes(), &mut output, &mut Context::new("string"));
+            FOO bar text".as_bytes(), &mut output, &mut Context::new("string"), false);
         assert_eq!(result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(), &[4, 6]);
     }
     
@@ -1102,7 +1104,7 @@ mod tests {
     fn lines_mapping2() {
         let mut output = Vec::new();
         let result = process("/* Hello */
-            world".as_bytes(), &mut output, &mut Context::new("string"));
+            world".as_bytes(), &mut output, &mut Context::new("string"), false);
         assert_eq!(result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(), &[2]);
     }
     
