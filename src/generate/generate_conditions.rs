@@ -529,7 +529,12 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.asm(CMP, right, pos, false)?;
                     self.flags = FlagsState::Unknown;
                 },
-                _ => return Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
+                ExprType::Tmp(_) => {
+                    self.asm(CMP, right, pos, false)?;
+                    self.flags = FlagsState::Unknown;
+                    self.tmp_in_use = false;
+                },
+                _ => return Err(self.compiler_state.syntax_error("Operation too complex for this compiler. Please introduce intermediate variables", pos))
             } 
         }
 

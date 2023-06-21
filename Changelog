@@ -1,3 +1,6 @@
+v0.8.1 (06/21/2023) :
+    - Added comparison between Acc & Tmp
+
 v0.8.0 (06/19/2023) :
     - Better integration of assembler code (with codesize comment)
     - Corrected a big bug with assembler code inclusion (preprocessing of strings)
