@@ -591,6 +591,7 @@ pub fn process<I: BufRead, O: Write>(
                                 if assembler {
                                     lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                                     output.write_all("=== ASSEMBLER BEGIN ===\n".as_bytes())?;
+                                    lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                                     output.write_all(format!("; file: {}\n", fname).as_bytes())?;
                                 }
                                 let f = BufReader::new(f);
