@@ -787,7 +787,7 @@ impl<'a> CompilerState<'a> {
                                                         let s = pxx.as_str().to_string();
                                                         let var = self.variables.get(&s);
                                                         if let Some(vx) = var {
-                                                            if vx.var_type != VariableType::CharPtr {
+                                                            if vx.var_type != VariableType::CharPtr && vx.var_type != VariableType::CharPtrPtr {
                                                                 return Err(self.syntax_error(&format!("Reference {} should be a pointer", s), start));
                                                             }
                                                         } else {
