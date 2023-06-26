@@ -306,6 +306,22 @@ impl AssemblyCode {
                     if i1.mnemonic == AsmMnemonic::LDX && i2.mnemonic == AsmMnemonic::STX && i1.dasm_operand == i2.dasm_operand && !i2.protected {
                         remove_second = true;
                     }
+                    // Remove TAX followed by TXA
+                    if i1.mnemonic == AsmMnemonic::TAX && i2.mnemonic == AsmMnemonic::TXA && !i2.protected {
+                        remove_second = true;
+                    }
+                    // Remove TXA followed by TAX
+                    if i1.mnemonic == AsmMnemonic::TXA && i2.mnemonic == AsmMnemonic::TAX && !i2.protected {
+                        remove_second = true;
+                    }
+                    // Remove TAY followed by TYA
+                    if i1.mnemonic == AsmMnemonic::TAY && i2.mnemonic == AsmMnemonic::TYA && !i2.protected {
+                        remove_second = true;
+                    }
+                    // Remove TYA followed by TAY
+                    if i1.mnemonic == AsmMnemonic::TYA && i2.mnemonic == AsmMnemonic::TAY && !i2.protected {
+                        remove_second = true;
+                    }
                     if i1.mnemonic == AsmMnemonic::LDA && i2.mnemonic == AsmMnemonic::LDA && !i1.protected {
                         remove_first = true;
                     }
