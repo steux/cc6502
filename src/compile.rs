@@ -717,7 +717,11 @@ impl<'a> CompilerState<'a> {
                     let mut start = 0;
                     for p in pair.into_inner() {
                         match p.as_rule() {
-                            Rule::pointer => var_type = VariableType::CharPtr,
+                            Rule::pointer => var_type = match var_type {
+                                VariableType::Char => VariableType::CharPtr,
+                                VariableType::CharPtr => VariableType::CharPtrPtr,
+                                _ => return Err(self.syntax_error("Type too complex not supported", start))
+                            },
                             Rule::var_const => var_const = true,
                             Rule::id_name => {
                                 name = p.as_str();

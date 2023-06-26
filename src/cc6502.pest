@@ -40,7 +40,7 @@ scattered = { "scattered" ~ "(" ~ calc_expr ~ "," ~ calc_expr ~ ")" }
 holeydma = { "holeydma" }
 screencode = { "screencode" }
 id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
-id_name_ex = { pointer? ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
+id_name_ex = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
 array_spec = { "[" ~ calc_expr? ~ "]" }
 var_def = { calc_expr | array_def | quoted_string }
 array_def = { "{" ~ ((calc_expr | id_name | quoted_string) ~ ",")* ~ (calc_expr | id_name | quoted_string) ~ "}" }
