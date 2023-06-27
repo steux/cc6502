@@ -1,5 +1,4 @@
-v0.8.1 (06/26/2023) :
-    - Accepts char ** declarations
+v0.8.1 (06/28/2023) :
     - Small bug correction for char * pointers references
     - Added optimization : optimized TXA/TAX & TAY/TYA pairs
     - Corrected a bug with line numbering with included assembler code

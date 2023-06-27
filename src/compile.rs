@@ -719,7 +719,6 @@ impl<'a> CompilerState<'a> {
                         match p.as_rule() {
                             Rule::pointer => var_type = match var_type {
                                 VariableType::Char => VariableType::CharPtr,
-                                VariableType::CharPtr => VariableType::CharPtrPtr,
                                 _ => return Err(self.syntax_error("Type too complex not supported", start))
                             },
                             Rule::var_const => var_const = true,
