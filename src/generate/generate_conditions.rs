@@ -24,7 +24,7 @@ use crate::error::Error;
 use crate::compile::*;
 use crate::assemble::AsmMnemonic::*;
 
-pub use super::{GeneratorState, ExprType, FlagsState};
+use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a, 'b> GeneratorState<'a> {
     pub fn generate_ternary(&mut self, condition: &'a Expr<'a>, alternatives: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>

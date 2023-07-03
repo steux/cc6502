@@ -1,6 +1,6 @@
 [package]
 name = "cc6502"
-version = "0.8.1"
+version = "0.9.0"
 edition = "2021"
 authors = ["Bruno STEUX <bruno.steux@gmail.com>"]
 license = "GPL-3.0-or-later"
@@ -12,12 +12,12 @@ keywords = ["cli", "6502", "compiler", "gamedev"]
 categories = ["command-line-utilities", "game-development", "compilers"]
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
-env_logger = "0.9"
+clap = { version = "4", features = ["derive"] }
+env_logger = "0.10"
 log = "0.4"
-pest = "2.5"
-pest_derive = "2.5"
-regex = "1.7"
+pest = "2"
+pest_derive = "2"
+regex = "1"
 
 [features]
 atari2600 = []
