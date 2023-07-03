@@ -119,6 +119,12 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             ExprType::A(s) => {
                 if mnemonic == LDA { return Ok(*s); }
+                if mnemonic == LDX {
+                    return self.asm(TAX, &ExprType::Nothing, pos, high_byte);
+                }
+                if mnemonic == LDY {
+                    return self.asm(TAY, &ExprType::Nothing, pos, high_byte);
+                }
                 return Err(self.compiler_state.syntax_error("Unexpected expression type", pos));           
             },
             ExprType::Absolute(variable, eight_bits, off) => {

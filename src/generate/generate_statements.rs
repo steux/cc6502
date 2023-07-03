@@ -287,14 +287,14 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                     Operation::Eq | Operation::Neq | Operation::Gt | Operation::Gte | Operation::Lt | Operation::Lte | Operation::Land | Operation::Lor => self.generate_expr_cond(expr, pos),
                     Operation::Bls(true) | Operation::Brs(true) => {
-                        let left = self.generate_expr(lhs, pos, false, false)?;
-                        let right = self.generate_expr(rhs,pos, false, false)?;
+                        let left = self.generate_expr(lhs, pos, false, high_byte)?;
+                        let right = self.generate_expr(rhs,pos, false, high_byte)?;
                         let newright = self.generate_shift(&left, op, &right, pos, high_byte)?;
                         self.generate_assign(&left, &newright, pos, false)
                     },
                     Operation::Bls(false) | Operation::Brs(false) => {
-                        let left = self.generate_expr(lhs, pos, false, false)?;
-                        let right = self.generate_expr(rhs, pos, false, false)?;
+                        let left = self.generate_expr(lhs, pos, false, high_byte)?;
+                        let right = self.generate_expr(rhs, pos, false, high_byte)?;
                         self.generate_shift(&left, op, &right, pos, high_byte)
                     },
                     Operation::TernaryCond1 => self.generate_ternary(lhs, rhs, pos),
@@ -318,7 +318,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             self.dummy()
                         };
                         let tmp_in_use = self.tmp_in_use;
-                        let sub_output = self.generate_expr(sub, pos, false, high_byte)?;
+                        let sub_output = self.generate_expr(sub, pos, false, second_time)?;
                         match sub_output {
                             ExprType::Nothing => if let VariableDefinition::Value(VariableValue::Int(val)) = &v.def {
                                 Ok(ExprType::Immediate(*val))
