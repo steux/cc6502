@@ -320,7 +320,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         let tmp_in_use = self.tmp_in_use;
                         let sub_output = self.generate_expr(sub, pos, false, high_byte)?;
                         match sub_output {
-                            ExprType::Nothing => if let VariableDefinition::Value(val) = &v.def {
+                            ExprType::Nothing => if let VariableDefinition::Value(VariableValue::Int(val)) = &v.def {
                                 Ok(ExprType::Immediate(*val))
                             } else {
                                 if high_byte && v.var_type == VariableType::Char && v.signed {

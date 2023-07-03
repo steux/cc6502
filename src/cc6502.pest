@@ -42,8 +42,12 @@ screencode = { "screencode" }
 id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 id_name_ex = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
 array_spec = { "[" ~ calc_expr? ~ "]" }
-var_def = { calc_expr | array_def | quoted_string }
-array_def = { "{" ~ ((calc_expr | id_name | quoted_string) ~ ",")* ~ (calc_expr | id_name | quoted_string) ~ "}" }
+var_def = { var_ptr | calc_expr | array_def | quoted_string }
+array_def = { "{" ~ ((var_ptr | calc_expr | quoted_string) ~ ",")* ~ (var_ptr | calc_expr | quoted_string) ~ "}" }
+var_ptr = { id_name ~ (ptr_hi | ptr_low | ptr_offset)? }
+ptr_hi = { ">>" ~ calc_expr }
+ptr_low = { "&" ~ calc_expr }
+ptr_offset = { "+" ~ calc_expr }
 pointer = { "*" }
 
 func_decl = { inline? ~ bank? ~ ("void" | (var_sign? ~ var_simple_type?)) ~ interrupt? ~ id_name ~ "(" ~ ("void")? ~ ")" ~ (";" | block) ~ ";"*}
