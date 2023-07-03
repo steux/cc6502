@@ -331,6 +331,9 @@ impl AssemblyCode {
                     if i1.mnemonic == AsmMnemonic::LDX && i2.mnemonic == AsmMnemonic::LDX && !i1.protected {
                         remove_first = true;
                     }
+                    if i1.mnemonic == AsmMnemonic::ORA && i1.dasm_operand == "#0" && !i1.protected {
+                        remove_first = true;
+                    }
                     // Check CMP and remove the branck if the result is obvious
                     if let Some(r) = accumulator {
                         if i1.mnemonic == AsmMnemonic::CMP && i1.dasm_operand.starts_with('#') {
