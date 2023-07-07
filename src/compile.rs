@@ -18,7 +18,7 @@
     Contact info: bruno.steux@gmail.com
 */
 
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use log::debug;
 
@@ -81,6 +81,7 @@ pub struct Variable {
     pub reversed: bool,
     pub scattered: Option<(u32, u32)>,
     pub holeydma: bool,
+    pub global: bool
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -109,62 +110,63 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone)]
-pub enum Expr<'a> {
+pub enum Expr {
     Nothing,
     Integer(i32),
-    Identifier((&'a str, Box<Expr<'a>>)),
-    FunctionCall(Box<Expr<'a>>),
+    Identifier(String, Box<Expr>),
+    FunctionCall(Box<Expr>),
     BinOp {
-        lhs: Box<Expr<'a>>,
+        lhs: Box<Expr>,
         op: Operation,
-        rhs: Box<Expr<'a>>,
+        rhs: Box<Expr>,
     },
-    Neg(Box<Expr<'a>>),
-    Not(Box<Expr<'a>>),
-    BNot(Box<Expr<'a>>),
-    MinusMinus(Box<Expr<'a>>, bool),
-    PlusPlus(Box<Expr<'a>>, bool),
-    Deref(Box<Expr<'a>>),
-    Sizeof(Box<Expr<'a>>),
+    Neg(Box<Expr>),
+    Not(Box<Expr>),
+    BNot(Box<Expr>),
+    MinusMinus(Box<Expr>, bool),
+    PlusPlus(Box<Expr>, bool),
+    Deref(Box<Expr>),
+    Sizeof(Box<Expr>),
     TmpId(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum Statement<'a> {
     Block(Vec<StatementLoc<'a>>),
-    Expression(Expr<'a>),
+    Expression(Expr),
     For { 
-        init: Expr<'a>,
-        condition: Expr<'a>,
-        update: Expr<'a>,
+        init: Expr,
+        condition: Expr,
+        update: Expr,
         body: Box<StatementLoc<'a>>
     },
     If {
-        condition: Expr<'a>,
+        condition: Expr,
         body: Box<StatementLoc<'a>>,
         else_body: Option<Box<StatementLoc<'a>>>
     },
     While {
-        condition: Expr<'a>,
+        condition: Expr,
         body: Box<StatementLoc<'a>>,
     },
     DoWhile {
         body: Box<StatementLoc<'a>>,
-        condition: Expr<'a>,
+        condition: Expr,
     },
     Switch {
-        expr: Expr<'a>,
+        expr: Expr,
         cases: Vec<(Vec<i32>, Vec<StatementLoc<'a>>)>
     },
     Break,
     Continue,
-    Return(Expr<'a>),
+    Return(Expr),
     Asm(String),
-    Strobe(Expr<'a>),
-    Load(Expr<'a>),
-    Store(Expr<'a>),
+    Strobe(Expr),
+    Load(Expr),
+    Store(Expr),
     CSleep(i32),
     Goto(&'a str),
+    LocalVarDecl,
 }
 
 #[derive(Debug, Clone)]
@@ -183,6 +185,7 @@ pub struct Function<'a> {
     pub return_signed: bool,
     pub return_type: Option<VariableType>,
     pub code: Option<StatementLoc<'a>>,
+    pub local_variables: Vec<String> 
 }
 
 pub struct CompilerState<'a> {
@@ -196,6 +199,8 @@ pub struct CompilerState<'a> {
     pub context: cpp::Context,
     signed_chars: bool,
     literal_counter: usize,
+    in_scope_variables: Vec<HashMap<String, String>>,
+    current_function: String,
 }
 
 impl<'a> CompilerState<'a> {
@@ -234,7 +239,7 @@ impl<'a> CompilerState<'a> {
         }
     }
 
-    fn parse_identifier(&self, pairs: Pairs<'a, Rule>) -> Result<(&'a str, Box<Expr<'a>>), Error>
+    fn parse_identifier(&'a self, pairs: Pairs<'a, Rule>) -> Result<(String, Box<Expr>), Error>
     {
         let mut p = pairs;
         let px = p.next().unwrap();
@@ -248,29 +253,51 @@ impl<'a> CompilerState<'a> {
         };
         if varname.eq("X") || varname.eq("Y") {
             match *subscript {
-                Expr::Nothing => return Ok((varname, subscript)),
+                Expr::Nothing => return Ok((varname.into(), subscript)),
                 _ => return Err(self.syntax_error(&format!("No subscript for {} index", varname), px.as_span().start())),
             }
         }
-        match self.variables.get(varname) {
-            Some(_var) => {
-                Ok((varname, subscript))
+
+        match self.in_scope_variables.last() {
+            Some(vars) => {
+                match vars.get(varname) {
+                    Some(vn) => {
+                        return Ok((vn.clone(), subscript))
+                    },
+                    None => match self.functions.get(varname) {
+                        Some(_var) => {
+                            match *subscript {
+                                Expr::Nothing => Ok((varname.into(), subscript)),
+                                _ => Err(self.syntax_error("No subscript for functions", px.as_span().start())),
+                            }
+                        },
+                        None => Err(self.syntax_error(&format!("Unknown identifier {}", varname), px.as_span().start()))
+                    }
+                }
             },
             None => {
-                match self.functions.get(varname) {
+                match self.variables.get(varname) {
                     Some(_var) => {
-                        match *subscript {
-                            Expr::Nothing => Ok((varname, subscript)),
-                            _ => Err(self.syntax_error("No subscript for functions", px.as_span().start())),
-                        }
+                        Ok((varname.into(), subscript))
                     },
-                    None => Err(self.syntax_error(&format!("Unknown identifier {}", varname), px.as_span().start()))
-                }
+                    None => {
+                        match self.functions.get(varname) {
+                            Some(_var) => {
+                                match *subscript {
+                                    Expr::Nothing => Ok((varname.into(), subscript)),
+                                    _ => Err(self.syntax_error("No subscript for functions", px.as_span().start())),
+                                }
+                            },
+                            None => Err(self.syntax_error(&format!("Unknown identifier {}", varname), px.as_span().start()))
+                        }
+                    }
+
+                } 
             }
         }
     }
 
-    fn parse_expr(&mut self, pairs: Pairs<'a, Rule>) -> Result<Expr<'a>, Error>
+    fn parse_expr(&mut self, pairs: Pairs<'a, Rule>) -> Result<Expr, Error>
     {
         let res = self.parse_expr_ex(pairs)?;
 
@@ -294,17 +321,18 @@ impl<'a> CompilerState<'a> {
                 reversed: false,
                 scattered: None,
                 holeydma: false,
+                global: true,
             });
         }
         Ok(res.0)
     }
 
-    fn parse_expr_ex(&self, pairs: Pairs<'a, Rule>) -> Result<(Expr<'a>, HashMap<String, String>), Error>
+    fn parse_expr_ex(&self, pairs: Pairs<'a, Rule>) -> Result<(Expr, HashMap<String, String>), Error>
     {
         let mut literal_counter = self.literal_counter;
         let mut literal_strings = HashMap::<String, String>::new(); 
         let res = self.pratt
-            .map_primary(|primary| -> Result<Expr<'a>, Error> {
+            .map_primary(|primary| -> Result<Expr, Error> {
                 match primary.as_rule() {
                     Rule::int => Ok(Expr::Integer(parse_int(primary.into_inner().next().unwrap()))),
                     Rule::expr => {
@@ -315,7 +343,10 @@ impl<'a> CompilerState<'a> {
                         literal_counter += res.1.len();
                         Ok(res.0) 
                     },
-                    Rule::identifier => Ok(Expr::Identifier(self.parse_identifier(primary.into_inner())?)),
+                    Rule::identifier => {
+                        let id = self.parse_identifier(primary.into_inner())?;
+                        Ok(Expr::Identifier(id.0, id.1))
+                    },
                     Rule::quoted_string => {
                         // Create a temp variable pointing to this quoted_string
                         let v = self.compile_quoted_string(primary);
@@ -418,8 +449,26 @@ impl<'a> CompilerState<'a> {
                 })
             },
             Rule::block => {
-                self.compile_block(pair)
+                if self.in_scope_variables.is_empty() {
+                    let mut map = HashMap::<String, String>::new();
+                    for i in &self.variables {
+                        map.insert(i.0.into(), i.0.into());
+                    }
+                    self.in_scope_variables.push(map)
+                } else {
+                    let c = self.in_scope_variables.last().unwrap();
+                    self.in_scope_variables.push(c.clone());
+                }
+                let ret = self.compile_block(pair);
+                self.in_scope_variables.pop();
+                ret
             },
+            Rule::local_var_decl => {
+                self.compile_local_var_decl(pair.into_inner())?;
+                Ok(StatementLoc {
+                    pos, label: None, statement: Statement::LocalVarDecl
+                })
+            }
             Rule::for_loop => {
                 let mut p = pair.into_inner();
                 let i = p.next().unwrap();
@@ -886,7 +935,7 @@ impl<'a> CompilerState<'a> {
                                                             alignment: 1,
                                                             def: VariableDefinition::Array(arr),
                                                             var_type: VariableType::CharPtr, size,
-                                                            reversed: false, scattered: None, holeydma: false});
+                                                            reversed: false, scattered: None, holeydma: false, global: true});
                                                         v.push((name, 0));
                                                     },
                                                     _ => return Err(self.syntax_error("Unexpected array value", start)),
@@ -962,7 +1011,279 @@ impl<'a> CompilerState<'a> {
                             alignment,
                             def,
                             var_type, size: size.unwrap_or(1),
-                            reversed, scattered, holeydma
+                            reversed, scattered, holeydma, global: true
+                        });
+                    }
+                },
+                _ => {
+                    debug!("What's this ? {:?}", pair);
+                    unreachable!()
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_local_var_decl(&mut self, pairs: Pairs<Rule>) -> Result<(), Error>
+    {
+        let mut var_type_ex = VariableType::Char;
+        let mut var_const = false;
+        let mut signedness_specified = false;
+        let mut signed = self.signed_chars;
+        let mut memory = VariableMemory::Zeropage;
+        let alignment = 1;
+        let reversed = false;
+        let scattered = None;
+        let holeydma = false;
+        for pair in pairs {
+            match pair.as_rule() {
+                Rule::var_type => {
+                    for p in pair.into_inner() {
+                        match p.as_rule() {
+                            Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
+                            Rule::var_sign => {
+                                signed = p.as_str().eq("signed");
+                                signedness_specified = true;
+                            },
+                            Rule::var_simple_type => if p.as_str().starts_with("short") || p.as_str().starts_with("int") {
+                                var_type_ex = VariableType::Short;
+                                if !signedness_specified { signed = true; }
+                            },
+                            _ => unreachable!()
+                        }
+                    }
+                },
+                Rule::id_name_ex => {
+                    let mut shortname = "";
+                    let mut name = String::new(); 
+                    let mut size = None;
+                    let mut def = VariableDefinition::None;
+                    let mut var_type = var_type_ex;
+                    let mut start = 0;
+                    for p in pair.into_inner() {
+                        match p.as_rule() {
+                            Rule::pointer => var_type = match var_type {
+                                VariableType::Char => VariableType::CharPtr,
+                                _ => return Err(self.syntax_error("Type too complex not supported", start))
+                            },
+                            Rule::var_const => var_const = true,
+                            Rule::id_name => {
+                                shortname = p.as_str();
+                                name = format!("{}_{}_{shortname}", self.current_function, self.in_scope_variables.len()); 
+                                start = p.as_span().start();
+                                if self.variables.get(&name).is_some() {
+                                    return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
+                                }
+                            },
+                            Rule::array_spec => {
+                                start = p.as_span().start();
+                                if let Some(px) = p.into_inner().next() {
+                                    size = Some(self.parse_calc(px.into_inner())? as usize);
+                                }
+                                if var_type == VariableType::Char {
+                                    var_type = VariableType::CharPtr;
+                                    var_const = true;
+                                } else if var_type == VariableType::CharPtr {
+                                    var_type = VariableType::CharPtrPtr;
+                                    var_const = true;
+                                } else if var_type == VariableType::Short {
+                                    var_type = VariableType::ShortPtr;
+                                    var_const = true;
+                                } else {
+                                    return Err(self.syntax_error("Kind of array not available", start));
+                                }
+                            },
+                            Rule::var_def => {
+                                let px = p.into_inner().next().unwrap();
+                                match px.as_rule() {
+                                    Rule::calc_expr => {
+                                        var_const = true;
+                                        let vx = self.parse_calc(px.into_inner())?;
+                                        def = VariableDefinition::Value(VariableValue::Int(vx));
+                                        if var_type == VariableType::CharPtr && vx > 0xff {
+                                            memory = VariableMemory::Ramchip;
+                                        }
+                                    },
+                                    Rule::var_ptr => {
+                                        var_const = true;
+                                        let mut pxx = px.into_inner();
+                                        let id_name = pxx.next().unwrap().as_str().to_string();
+                                        def = VariableDefinition::Value(match pxx.next() {
+                                            Some(x) => match x.as_rule() {
+                                                Rule::ptr_low => {
+                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                    if val == 255 {
+                                                        VariableValue::LowPtr((id_name, 0))
+                                                    } else {
+                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                    }
+                                                },
+                                                Rule::ptr_hi => {
+                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                    if val == 8 {
+                                                        VariableValue::HiPtr((id_name, 0))
+                                                    } else {
+                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                    }
+                                                },
+                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                            },
+                                            None => VariableValue::LowPtr((id_name, 0)),
+                                        });
+                                    },
+                                    Rule::array_def => {
+                                        start = px.as_span().start();
+                                        memory = match memory {
+                                            VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
+                                            _ => VariableMemory::ROM(0)
+                                        };
+                                        if var_type != VariableType::CharPtr && var_type != VariableType::CharPtrPtr && var_type != VariableType::ShortPtr {
+                                            return Err(self.syntax_error("Array definition provided for something not an array", start));
+                                        }
+                                        if var_type == VariableType::CharPtr || var_type == VariableType::ShortPtr {
+                                            let mut v = Vec::new();
+                                            for pxx in px.into_inner() {
+                                                match pxx.as_rule() {
+                                                    Rule::calc_expr => v.push(VariableValue::Int(self.parse_calc(pxx.into_inner())?)),
+                                                    Rule::var_ptr => {
+                                                        let mut pxxx = pxx.into_inner();
+                                                        let id_name = pxxx.next().unwrap().as_str().to_string();
+                                                        match pxxx.next() {
+                                                            Some(x) => match x.as_rule() {
+                                                                Rule::ptr_low => {
+                                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                    if val == 255 {
+                                                                        v.push(VariableValue::LowPtr((id_name, 0)))
+                                                                    } else {
+                                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                    }
+                                                                },
+                                                                Rule::ptr_hi => {
+                                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                    if val == 8 {
+                                                                        v.push(VariableValue::HiPtr((id_name, 0)))
+                                                                    } else {
+                                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                    }
+                                                                },
+                                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                            },
+                                                            None => v.push(VariableValue::LowPtr((id_name, 0))),
+                                                        };
+                                                    },
+                                                    _ => return Err(self.syntax_error(&format!("Expecting constant literal, found {}", pxx.as_str() ), start))
+                                                };
+                                            }
+                                            if let Some(s) = size {
+                                                if s != v.len() {
+                                                    return Err(self.syntax_error("Specified array size is different from actual definition", start));
+                                                }
+                                            }
+                                            size = Some(v.len());
+                                            def = VariableDefinition::Array(v);
+                                        } else {
+                                            let mut v = Vec::new();
+                                            for pxx in px.into_inner() {
+                                                match pxx.as_rule() {
+                                                    Rule::var_ptr => {
+                                                        let mut pxxx = pxx.into_inner();
+                                                        let s = pxxx.next().unwrap().as_str().to_string();
+                                                        let offset = match pxxx.next() {
+                                                            Some(x) => match x.as_rule() {
+                                                                Rule::ptr_offset => {
+                                                                    self.parse_calc(x.into_inner().next().unwrap().into_inner())? as usize
+                                                                },
+                                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", s), start))
+                                                            },
+                                                            None => 0,
+                                                        };
+                                                        let var = self.variables.get(&s);
+                                                        if let Some(vx) = var {
+                                                            if vx.var_type != VariableType::CharPtr && vx.var_type != VariableType::CharPtrPtr {
+                                                                return Err(self.syntax_error(&format!("Reference {} should be a pointer", s), start));
+                                                            }
+                                                        } else {
+                                                            return Err(self.syntax_error(&format!("Unknown identifier {}", s), start));
+                                                        }
+                                                        v.push((s, offset));
+                                                    },
+                                                    Rule::quoted_string => {
+                                                        let k = self.compile_quoted_string(pxx);
+                                                        let name = format!("cctmp{}", self.literal_counter);
+                                                        self.literal_counter += 1;
+                                                        let vb = k.as_bytes();
+                                                        let mut arr = Vec::<VariableValue>::new();
+                                                        for c in vb.iter() {
+                                                            arr.push(VariableValue::Int(*c as i32));
+                                                        }
+                                                        let size = v.len();
+                                                        self.variables.insert(name.clone(), Variable {
+                                                            order: self.variables.len(),
+                                                            signed: false,
+                                                            memory,
+                                                            var_const: true,
+                                                            alignment: 1,
+                                                            def: VariableDefinition::Array(arr),
+                                                            var_type: VariableType::CharPtr, size,
+                                                            reversed: false, scattered: None, holeydma: false, global: true});
+                                                        v.push((name, 0));
+                                                    },
+                                                    _ => return Err(self.syntax_error("Unexpected array value", start)),
+                                                }
+                                            }
+                                            if let Some(s) = size {
+                                                if s != v.len() {
+                                                    return Err(self.syntax_error("Specified array size is different from actual definition", start));
+                                                }
+                                            }
+                                            size = Some(v.len());
+                                            def = VariableDefinition::ArrayOfPointers(v);
+                                        }
+                                        var_const = true;
+                                    },
+                                    Rule::quoted_string => {
+                                        start = px.as_span().start();
+                                        memory = VariableMemory::ROM(0);
+                                        if var_type != VariableType::CharPtr {
+                                            return Err(self.syntax_error("String provided for something not a char*", start));
+                                        }
+                                        let string = self.compile_quoted_string(px);
+                                        let vb = string.as_bytes();
+                                        let mut v = Vec::<VariableValue>::new();
+                                        for c in vb.iter() {
+                                            let d = *c;
+                                            v.push(VariableValue::Int(d as i32));
+                                        }
+                                        size = Some(v.len());
+                                        def = VariableDefinition::Array(v);
+                                        var_const = true;
+                                    },
+                                    _ => unreachable!()
+                                } 
+                            },
+                            _ => unreachable!()
+                        }
+                    }
+
+                    if name != "X" && name != "Y" {
+                        // Insert it into the functions table
+                        if !var_const {
+                            let f = self.functions.get_mut(&self.current_function).unwrap();
+                            f.local_variables.push(name.clone());
+                        }
+                        // Insert it also in the local scope
+                        let vars = self.in_scope_variables.last_mut().unwrap();
+                        vars.insert(shortname.into(), name.clone());
+                        // Insert it into the global table
+                        self.variables.insert(name, Variable {
+                            order: self.variables.len(),
+                            signed,
+                            memory,
+                            var_const,
+                            alignment,
+                            def,
+                            var_type, size: size.unwrap_or(1),
+                            reversed, scattered, holeydma, global: false
                         });
                     }
                 },
@@ -1038,6 +1359,7 @@ impl<'a> CompilerState<'a> {
                             return Err(self.syntax_error(&format!("Function {} already defined", name), start));
                         }
                     }
+                    self.current_function = name.clone();
                     let code = self.compile_block(pair)?;
                     self.functions.insert(name, Function {
                         order: self.functions.len(),
@@ -1046,7 +1368,8 @@ impl<'a> CompilerState<'a> {
                         code: Some(code),
                         interrupt,
                         return_signed,
-                        return_type
+                        return_type,
+                        local_variables: Vec::new()
                     });
                     return Ok(())
                 },
@@ -1062,7 +1385,8 @@ impl<'a> CompilerState<'a> {
                 code: None,
                 interrupt,
                 return_signed,
-                return_type
+                return_type,
+                local_variables: Vec::new()
             });
         }
         Ok(())
@@ -1231,6 +1555,8 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         context,
         signed_chars: args.signed_chars,
         literal_counter: 0,
+        in_scope_variables: Vec::new(),
+        current_function: String::new()
     };
 
     let r = Cc2600Parser::parse(Rule::program, preprocessed_utf8);

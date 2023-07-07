@@ -553,7 +553,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_neg(&mut self, expr: &'a Expr<'a>, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_neg(&mut self, expr: &'a Expr, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(-*i)),
@@ -565,7 +565,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_not(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_not(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Integer(i) => if *i != 0 {
@@ -612,7 +612,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_bnot(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_bnot(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(!*i)),
