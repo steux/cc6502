@@ -27,7 +27,7 @@ use crate::assemble::AsmMnemonic::*;
 use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a, 'b> GeneratorState<'a> {
-    pub fn generate_ternary(&mut self, condition: &'a Expr<'a>, alternatives: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_ternary(&mut self, condition: &'a Expr, alternatives: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match alternatives {
             Expr::BinOp {lhs, op, rhs} => {
@@ -91,7 +91,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_expr_cond(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_expr_cond(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         if self.acc_in_use {
             self.sasm(PHA)?; 
@@ -541,7 +541,7 @@ impl<'a, 'b> GeneratorState<'a> {
         self.generate_branch_instruction(&operator, signed, label)
     }
 
-    pub fn generate_condition(&mut self, condition: &'a Expr<'a>, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
+    pub fn generate_condition(&mut self, condition: &'a Expr, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
     {
         //debug!("Condition: {:?}", condition);
         match condition {
@@ -705,7 +705,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_if(&mut self, condition: &'a Expr<'a>, body: &'a StatementLoc<'a>, else_body: Option<&'a StatementLoc<'a>>, pos: usize) -> Result<(), Error>
+    pub fn generate_if(&mut self, condition: &'a Expr, body: &'a StatementLoc<'a>, else_body: Option<&'a StatementLoc<'a>>, pos: usize) -> Result<(), Error>
     {
         self.local_label_counter_if += 1;
         let ifend_label = format!(".ifend{}", self.local_label_counter_if);
@@ -754,7 +754,7 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    pub fn generate_switch(&mut self, expr: &'a Expr<'a>, cases: &'a Vec<(Vec<i32>, Vec<StatementLoc<'a>>)>, pos: usize) -> Result<(), Error>
+    pub fn generate_switch(&mut self, expr: &'a Expr, cases: &'a Vec<(Vec<i32>, Vec<StatementLoc<'a>>)>, pos: usize) -> Result<(), Error>
     {
         let e = self.generate_expr(expr, pos, false, false)?;
         self.local_label_counter_if += 1;

@@ -75,13 +75,13 @@ impl<'a, 'b> GeneratorState<'a> {
         None
     }
 
-    fn generate_function_call(&mut self, expr: &Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_function_call(&mut self, expr: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
-            Expr::Identifier((var, sub)) => {
+            Expr::Identifier(var, sub) => {
                 match sub.as_ref() {
                     Expr::Nothing => {
-                        match self.compiler_state.functions.get(*var) {
+                        match self.compiler_state.functions.get(var) {
                             None => Err(self.compiler_state.syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
                                 if self.acc_in_use { self.sasm(PHA)?; }
@@ -169,10 +169,10 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_deref(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_deref(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
-            Expr::Identifier((var, sub)) => {
+            Expr::Identifier(var, sub) => {
                 let v = self.compiler_state.get_variable(var);
                 if v.var_type == VariableType::CharPtr {
                     let sub_output = self.generate_expr(sub, pos, false, false)?;
@@ -190,10 +190,10 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_sizeof(&mut self, expr: &Expr<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_sizeof(&mut self, expr: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
-            Expr::Identifier((var, _)) => {
+            Expr::Identifier(var, _) => {
                 let v = self.compiler_state.get_variable(var);
                 match v.var_type {
                     VariableType::CharPtr => {
@@ -214,7 +214,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_expr(&mut self, expr: &'a Expr<'a>, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_expr(&mut self, expr: &'a Expr, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType<'a>, Error>
     {
         debug!("Expression: {:?}, high_byte: {}", expr, high_byte);
         match expr {
@@ -308,8 +308,8 @@ impl<'a, 'b> GeneratorState<'a> {
                     }
                 }
             },
-            Expr::Identifier((var, sub)) => {
-                match *var {
+            Expr::Identifier(var, sub) => {
+                match var.as_str() {
                     "X" => Ok(ExprType::X),
                     "Y" => Ok(ExprType::Y),
                     variable => {
@@ -425,7 +425,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
     
-    fn generate_for_loop(&mut self, init: &'a Expr<'a>, condition: &'a Expr<'a>, update: &'a Expr<'a>, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
+    fn generate_for_loop(&mut self, init: &'a Expr, condition: &'a Expr, update: &'a Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
     {
         self.local_label_counter_for += 1;
         let for_label = format!(".for{}", self.local_label_counter_for);
@@ -446,7 +446,7 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    fn generate_while(&mut self, condition: &'a Expr<'a>, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
+    fn generate_while(&mut self, condition: &'a Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
     {
         if let Statement::Expression(Expr::Nothing) = body.statement {
             self.generate_do_while(body, condition, pos)
@@ -465,7 +465,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_do_while(&mut self, body: &'a StatementLoc<'a>, condition: &'a Expr<'a>, pos: usize) -> Result<(), Error>
+    fn generate_do_while(&mut self, body: &'a StatementLoc<'a>, condition: &'a Expr, pos: usize) -> Result<(), Error>
     {
         self.local_label_counter_while += 1;
         let dowhile_label = format!(".dowhile{}", self.local_label_counter_while);
@@ -509,7 +509,7 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    pub fn generate_return(&mut self, expr: &'a Expr<'a>, pos: usize) -> Result<(), Error>
+    pub fn generate_return(&mut self, expr: &'a Expr, pos: usize) -> Result<(), Error>
     {
         if let Some(s) = &self.current_function {
             let f = self.compiler_state.functions.get(s).unwrap(); 
@@ -551,10 +551,10 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    fn generate_strobe_statement(&mut self, expr: &Expr<'a>, pos: usize) -> Result<(), Error>
+    fn generate_strobe_statement(&mut self, expr: &Expr, pos: usize) -> Result<(), Error>
     {
         match expr {
-            Expr::Identifier((name, _)) => {
+            Expr::Identifier(name, _) => {
                 let v = self.compiler_state.get_variable(name);
                 match v.var_type {
                     VariableType::CharPtr => {
@@ -693,7 +693,8 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.generate_load_store_statement(&param, code.pos, true)?; 
             }
             Statement::CSleep(s) => { self.generate_csleep_statement(*s, code.pos)?; }
-            Statement::Goto(s) => { self.generate_goto_statement(s)?; }
+            Statement::Goto(s) => { self.generate_goto_statement(s)?; },
+            Statement::LocalVarDecl => (),
         }
 
         self.purge_deferred_plusplus_and_savey()?;

@@ -27,6 +27,9 @@
 // DONE: Detect & 0xff and return lower 8 bits
 // DONE: Detect 16 bits aithm bad carry propagation
 // DONE: Implement function return in Acc
+// TODO: Add nbbytes param to asm statement
+// TODO: Add local variables stack storage code
+// TODO: Add functions params support
 
 mod cpp;
 pub mod error;
@@ -1204,5 +1207,111 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("x                      \tEQU <hello\ny                      \tEQU >hello"));
+    }
+
+    #[test]
+    fn local_var_test1() {
+        let args = sargs(1);
+        let input = "void main() { char i; i = X; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_i\n\tRTS"));
+    }
+    
+    #[test]
+    fn local_var_test2() {
+        let args = sargs(1);
+        let input = "void f() { char j; j = Y; }\nvoid main() { char i; i = X; f(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_1_j                  \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+    }
+    
+    #[test]
+    fn local_var_test3() {
+        let args = sargs(1);
+        let input = "void main() { char i, j; i = X; j = Y; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
+    }
+    
+    #[test]
+    fn local_var_test4() {
+        let args = sargs(1);
+        let input = "void main() { char i; i = X; if (X) { char i; i = X; } i = Y;}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_2_i               \tds 1"));
+        assert!(result.contains("STX main_1_i\n\tCPX #0\n\tBEQ .ifend1\n\tSTX main_2_i\n.ifend1\n\tSTY main_1_i"));
+    }
+    
+    #[test]
+    fn local_var_test5() {
+        let args = sargs(1);
+        let input = "void main() { const char i = 7; X = i; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("main_1_i               \tEQU $7"));
+        assert!(result.contains("LDX #7"));
+    }
+    
+    #[test]
+    fn local_var_test6() {
+        let args = sargs(1);
+        let input = "void main() { char i = 7; X = i; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+        assert!(result.contains("main\tSUBROUTINE\n\tLDA #7\n\tSTA main_1_i\n\tLDX main_1_i"));
+    }
+    
+    #[test]
+    fn local_var_test7() {
+        let args = sargs(1);
+        let input = "void main() { char i = 7, j = 8; X = i; Y = j; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
+        assert!(result.contains("main\tSUBROUTINE\n\tLDA #7\n\tSTA main_1_i\n\tLDA #8\n\tSTA main_1_j\n\tLDX main_1_i\n\tLDY main_1_j"));
+    }
+    
+    #[test]
+    fn local_var_test8() {
+        let args = sargs(1);
+        let input = "void main() { char i[2], j[3]; i[0] = X; j[1] = Y; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 2\nmain_1_j               \tds 3"));
+        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_i\n\tSTY main_1_j+1"));
+    }
+    
+    #[test]
+    fn local_var_test9() {
+        let args = sargs(1);
+        let input = "void main() { int i = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 2\n"));
+        assert!(result.contains("main\tSUBROUTINE\n\tLDA #0\n\tSTA main_1_i\n\tSTA main_1_i+1"));
     }
 }
