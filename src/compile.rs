@@ -449,16 +449,8 @@ impl<'a> CompilerState<'a> {
                 })
             },
             Rule::block => {
-                if self.in_scope_variables.is_empty() {
-                    let mut map = HashMap::<String, String>::new();
-                    for i in &self.variables {
-                        map.insert(i.0.into(), i.0.into());
-                    }
-                    self.in_scope_variables.push(map)
-                } else {
-                    let c = self.in_scope_variables.last().unwrap();
-                    self.in_scope_variables.push(c.clone());
-                }
+                let c = self.in_scope_variables.last().unwrap();
+                self.in_scope_variables.push(c.clone());
                 let ret = self.compile_block(pair);
                 self.in_scope_variables.pop();
                 ret
@@ -765,7 +757,7 @@ impl<'a> CompilerState<'a> {
                         }
                     }
                 },
-                Rule::id_name_ex => {
+                Rule::global_id => {
                     let mut name = "";
                     let mut size = None;
                     let mut def = VariableDefinition::None;
@@ -1037,7 +1029,7 @@ impl<'a> CompilerState<'a> {
         let holeydma = false;
         for pair in pairs {
             match pair.as_rule() {
-                Rule::var_type => {
+                Rule::local_var_type => {
                     for p in pair.into_inner() {
                         match p.as_rule() {
                             Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
@@ -1053,7 +1045,7 @@ impl<'a> CompilerState<'a> {
                         }
                     }
                 },
-                Rule::id_name_ex => {
+                Rule::local_id => {
                     let mut shortname = "";
                     let mut name = String::new(); 
                     let mut size = None;
@@ -1360,17 +1352,25 @@ impl<'a> CompilerState<'a> {
                         }
                     }
                     self.current_function = name.clone();
-                    let code = self.compile_block(pair)?;
-                    self.functions.insert(name, Function {
+                    let mut map = HashMap::<String, String>::new();
+                    for i in &self.variables {
+                        map.insert(i.0.into(), i.0.into());
+                    }
+                    self.in_scope_variables.push(map);
+                    self.functions.insert(name.clone(), Function {
                         order: self.functions.len(),
                         inline,
                         bank,
-                        code: Some(code),
+                        code: None,
                         interrupt,
                         return_signed,
                         return_type,
                         local_variables: Vec::new()
                     });
+                    let code = self.compile_block(pair)?;
+                    let f = self.functions.get_mut(&self.current_function).unwrap();
+                    f.code = Some(code);
+                    self.in_scope_variables.clear();
                     return Ok(())
                 },
                 _ => unreachable!(), 
