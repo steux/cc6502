@@ -27,8 +27,10 @@ decl = { var_decl
        }
 var_decl = { var_type ~ global_id ~ ("," ~ global_id)* ~ ";"+ }
 var_type = { (var_const | superchip | ramchip | bank | aligned | display | frequency | reversed | scattered | holeydma | screencode )* ~ var_sign? ~ var_simple_type }
-local_var_decl = { local_var_type ~ local_id ~ ("," ~ local_id)* ~ ";"+ }
-local_var_type = { var_const? ~ var_sign? ~ var_simple_type }
+local_var_decl = { local_var_decl_const | local_var_decl_mut }
+local_var_decl_const = { "const" ~ var_type ~ global_id ~ ("," ~ global_id)* ~ ";" }
+local_var_decl_mut = { local_var_type ~ local_id ~ ("," ~ local_id)* ~ ";" }
+local_var_type = { var_sign? ~ var_simple_type }
 var_const = { "const" }
 superchip = { "superchip" }
 ramchip = { "ramchip" }
@@ -43,7 +45,7 @@ holeydma = { "holeydma" }
 screencode = { "screencode" }
 id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 global_id = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
-local_id = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ (expr | var_def))? }
+local_id = { pointer* ~ id_name ~ array_spec? ~ ("=" ~ expr_init_value)? }
 array_spec = { "[" ~ calc_expr? ~ "]" }
 var_def = { var_ptr | calc_expr | array_def | quoted_string }
 array_def = { "{" ~ ((var_ptr | calc_expr | quoted_string) ~ ",")* ~ (var_ptr | calc_expr | quoted_string) ~ "}" }
@@ -103,6 +105,12 @@ nothing = { "" }
 
 cases = { ("case" ~ int ~ ":" ~ ((!"default" ~ statement)*))* ~ default_case? }
 default_case = { "default" ~ ":" ~ statement* } 
+
+expr_init_value = { prefix* ~ primary ~ postfix* ~ (infix_ex ~ prefix* ~ primary ~ postfix* )* }
+    infix_ex    =  _{ pass | mass | mulass | divass | blsass | brsass | andass | xorass | orass |
+                   mul | div | add | sub | bls | brs | lte | lt | gte | gt | eq | neq |
+                   land | lor | and | xor | or | assign | ternary_cond1 | ternary_cond2
+                   }
 
 expr       =   { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix* )* }
     infix    =  _{ pass | mass | mulass | divass | blsass | brsass | andass | xorass | orass |

@@ -18,7 +18,7 @@
     Contact info: bruno.steux@gmail.com
 */
 
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, unreachable};
 
 use log::debug;
 
@@ -192,6 +192,7 @@ pub struct CompilerState<'a> {
     pub variables: HashMap<String, Variable>,
     pub functions: HashMap<String, Function<'a>>,
     pratt: PrattParser<Rule>,
+    pratt_init_value: PrattParser<Rule>,
     calculator: PrattParser<Rule>,
     mapped_lines: &'a Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>,
     pub preprocessed_utf8: &'a str,
@@ -421,6 +422,129 @@ impl<'a> CompilerState<'a> {
         }
     }
 
+    fn parse_expr_init_value(&mut self, pairs: Pairs<'a, Rule>) -> Result<Expr, Error>
+    {
+        let res = self.parse_expr_init_value_ex(pairs)?;
+
+        // Create collected literal variables in memory
+        self.literal_counter += res.1.len();
+        for k in &res.1 {
+            let vb = k.1.as_bytes();
+            let mut v = Vec::<VariableValue>::new();
+            for c in vb.iter() {
+                v.push(VariableValue::Int(*c as i32));
+            }
+            let size = v.len();
+            self.variables.insert(k.0.clone(), Variable {
+                order: self.variables.len(),
+                signed: false,
+                memory: VariableMemory::ROM(0),
+                var_const: true,
+                alignment: 1,
+                def: VariableDefinition::Array(v),
+                var_type: VariableType::CharPtr, size,
+                reversed: false,
+                scattered: None,
+                holeydma: false,
+                global: true,
+            });
+        }
+        Ok(res.0)
+    }
+
+    fn parse_expr_init_value_ex(&self, pairs: Pairs<'a, Rule>) -> Result<(Expr, HashMap<String, String>), Error>
+    {
+        let mut literal_counter = self.literal_counter;
+        let mut literal_strings = HashMap::<String, String>::new(); 
+        let res = self.pratt_init_value
+            .map_primary(|primary| -> Result<Expr, Error> {
+                match primary.as_rule() {
+                    Rule::int => Ok(Expr::Integer(parse_int(primary.into_inner().next().unwrap()))),
+                    Rule::expr => {
+                        let res = self.parse_expr_ex(primary.into_inner())?;
+                        for k in &res.1 {
+                            literal_strings.insert(k.0.clone(), k.1.clone());
+                        }
+                        literal_counter += res.1.len();
+                        Ok(res.0) 
+                    },
+                    Rule::identifier => {
+                        let id = self.parse_identifier(primary.into_inner())?;
+                        Ok(Expr::Identifier(id.0, id.1))
+                    },
+                    Rule::quoted_string => {
+                        // Create a temp variable pointing to this quoted_string
+                        let v = self.compile_quoted_string(primary);
+                        let name = format!("cctmp{}", literal_counter);
+                        literal_counter += 1;
+                        literal_strings.insert(name.clone(), v);
+                        Ok(Expr::TmpId(name))
+                    },
+                    rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
+                }
+            })
+        .map_infix(|lhs, op, rhs| {
+            let op = match op.as_rule() {
+                Rule::mul => Operation::Mul(false),
+                Rule::div => Operation::Div(false),
+                Rule::add => Operation::Add(false),
+                Rule::sub => Operation::Sub(false),
+                Rule::and => Operation::And(false),
+                Rule::or => Operation::Or(false),
+                Rule::xor => Operation::Xor(false),
+                Rule::brs => Operation::Brs(false),
+                Rule::bls => Operation::Bls(false),
+                Rule::eq => Operation::Eq,
+                Rule::neq => Operation::Neq,
+                Rule::assign => Operation::Assign,
+                Rule::gt => Operation::Gt,
+                Rule::gte => Operation::Gte,
+                Rule::lt => Operation::Lt,
+                Rule::lte => Operation::Lte,
+                Rule::mulass => Operation::Mul(true),
+                Rule::divass => Operation::Div(true),
+                Rule::pass => Operation::Add(true),
+                Rule::mass => Operation::Sub(true),
+                Rule::blsass => Operation::Bls(true),
+                Rule::brsass => Operation::Brs(true),
+                Rule::andass => Operation::And(true),
+                Rule::orass => Operation::Or(true),
+                Rule::xorass => Operation::Xor(true),
+                Rule::land => Operation::Land,
+                Rule::lor => Operation::Lor,
+                Rule::ternary_cond1 => Operation::TernaryCond1,
+                Rule::ternary_cond2 => Operation::TernaryCond2,
+                rule => unreachable!("Expr::parse expected infix operation, found {:?}", rule),
+            };
+            Ok(Expr::BinOp {
+                lhs: Box::new(lhs?),
+                op,
+                rhs: Box::new(rhs?),
+            })
+        })
+        .map_prefix(|op, rhs| match op.as_rule() {
+            Rule::neg => Ok(Expr::Neg(Box::new(rhs?))),
+            Rule::not => Ok(Expr::Not(Box::new(rhs?))),
+            Rule::bnot => Ok(Expr::BNot(Box::new(rhs?))),
+            Rule::deref => Ok(Expr::Deref(Box::new(rhs?))),
+            Rule::mmp => Ok(Expr::MinusMinus(Box::new(rhs?), false)),
+            Rule::ppp => Ok(Expr::PlusPlus(Box::new(rhs?), false)),
+            Rule::sizeof => Ok(Expr::Sizeof(Box::new(rhs?))),
+            _ => unreachable!(),
+        })
+        .map_postfix(|lhs, op| match op.as_rule() {
+            Rule::mm => Ok(Expr::MinusMinus(Box::new(lhs?), true)),
+            Rule::pp => Ok(Expr::PlusPlus(Box::new(lhs?), true)),
+            Rule::call =>Ok(Expr::FunctionCall(Box::new(lhs?))),             
+            _ => unreachable!(),
+        })
+        .parse(pairs);
+        match res {
+            Ok(r) => Ok((r, literal_strings)),
+            Err(x) => Err(x),
+        }
+    }
+
     fn compile_statement(&mut self, p: Pair<'a, Rule>) -> Result<StatementLoc<'a>, Error>
     {
         let mut inner = p.into_inner();
@@ -456,10 +580,7 @@ impl<'a> CompilerState<'a> {
                 ret
             },
             Rule::local_var_decl => {
-                self.compile_local_var_decl(pair.into_inner())?;
-                Ok(StatementLoc {
-                    pos, label: None, statement: Statement::LocalVarDecl
-                })
+                self.compile_local_var_decl(pair.into_inner())
             }
             Rule::for_loop => {
                 let mut p = pair.into_inner();
@@ -692,10 +813,10 @@ impl<'a> CompilerState<'a> {
     }
 
 #[allow(unused_assignments)]
-    fn compile_var_decl(&mut self, pairs: Pairs<Rule>) -> Result<(), Error>
+    fn compile_var_decl(&mut self, pairs: Pairs<Rule>, global: bool) -> Result<(), Error>
     {
         let mut var_type_ex = VariableType::Char;
-        let mut var_const = false;
+        let mut var_const = !global;
         let mut signedness_specified = false;
         let mut signed = self.signed_chars;
         let mut memory = VariableMemory::Zeropage;
@@ -758,7 +879,8 @@ impl<'a> CompilerState<'a> {
                     }
                 },
                 Rule::global_id => {
-                    let mut name = "";
+                    let mut shortname = "";
+                    let mut name = String::new();
                     let mut size = None;
                     let mut def = VariableDefinition::None;
                     let mut var_type = var_type_ex;
@@ -771,9 +893,14 @@ impl<'a> CompilerState<'a> {
                             },
                             Rule::var_const => var_const = true,
                             Rule::id_name => {
-                                name = p.as_str();
+                                shortname = p.as_str();
+                                if global {
+                                    name = shortname.into();
+                                } else {
+                                    name = format!("{}_{}_{shortname}", self.current_function, self.in_scope_variables.len()); 
+                                }
                                 start = p.as_span().start();
-                                if self.variables.get(name).is_some() {
+                                if self.variables.get(&name).is_some() {
                                     return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
                                 }
                             },
@@ -995,6 +1122,11 @@ impl<'a> CompilerState<'a> {
                     }
 
                     if name != "X" && name != "Y" {
+                        if !global {
+                            // Insert it also in the local scope
+                            let vars = self.in_scope_variables.last_mut().unwrap();
+                            vars.insert(shortname.into(), name.clone());
+                        }
                         self.variables.insert(name.to_string(), Variable {
                             order: self.variables.len(),
                             signed,
@@ -1016,276 +1148,136 @@ impl<'a> CompilerState<'a> {
         Ok(())
     }
 
-    fn compile_local_var_decl(&mut self, pairs: Pairs<Rule>) -> Result<(), Error>
+    fn compile_local_var_decl(&mut self, mut pairs: Pairs<'a, Rule>) -> Result<StatementLoc<'a>, Error>
     {
-        let mut var_type_ex = VariableType::Char;
-        let mut var_const = false;
-        let mut signedness_specified = false;
-        let mut signed = self.signed_chars;
-        let mut memory = VariableMemory::Zeropage;
-        let alignment = 1;
-        let reversed = false;
-        let scattered = None;
-        let holeydma = false;
-        for pair in pairs {
-            match pair.as_rule() {
-                Rule::local_var_type => {
-                    for p in pair.into_inner() {
-                        match p.as_rule() {
-                            Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
-                            Rule::var_sign => {
-                                signed = p.as_str().eq("signed");
-                                signedness_specified = true;
-                            },
-                            Rule::var_simple_type => if p.as_str().starts_with("short") || p.as_str().starts_with("int") {
-                                var_type_ex = VariableType::Short;
-                                if !signedness_specified { signed = true; }
-                            },
-                            _ => unreachable!()
-                        }
-                    }
-                },
-                Rule::local_id => {
-                    let mut shortname = "";
-                    let mut name = String::new(); 
-                    let mut size = None;
-                    let mut def = VariableDefinition::None;
-                    let mut var_type = var_type_ex;
-                    let mut start = 0;
-                    for p in pair.into_inner() {
-                        match p.as_rule() {
-                            Rule::pointer => var_type = match var_type {
-                                VariableType::Char => VariableType::CharPtr,
-                                _ => return Err(self.syntax_error("Type too complex not supported", start))
-                            },
-                            Rule::var_const => var_const = true,
-                            Rule::id_name => {
-                                shortname = p.as_str();
-                                name = format!("{}_{}_{shortname}", self.current_function, self.in_scope_variables.len()); 
-                                start = p.as_span().start();
-                                if self.variables.get(&name).is_some() {
-                                    return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
-                                }
-                            },
-                            Rule::array_spec => {
-                                start = p.as_span().start();
-                                if let Some(px) = p.into_inner().next() {
-                                    size = Some(self.parse_calc(px.into_inner())? as usize);
-                                }
-                                if var_type == VariableType::Char {
-                                    var_type = VariableType::CharPtr;
-                                    var_const = true;
-                                } else if var_type == VariableType::CharPtr {
-                                    var_type = VariableType::CharPtrPtr;
-                                    var_const = true;
-                                } else if var_type == VariableType::Short {
-                                    var_type = VariableType::ShortPtr;
-                                    var_const = true;
-                                } else {
-                                    return Err(self.syntax_error("Kind of array not available", start));
-                                }
-                            },
-                            Rule::var_def => {
-                                let px = p.into_inner().next().unwrap();
-                                match px.as_rule() {
-                                    Rule::calc_expr => {
-                                        var_const = true;
-                                        let vx = self.parse_calc(px.into_inner())?;
-                                        def = VariableDefinition::Value(VariableValue::Int(vx));
-                                        if var_type == VariableType::CharPtr && vx > 0xff {
-                                            memory = VariableMemory::Ramchip;
-                                        }
+        let p = pairs.next().unwrap();
+        let pos = p.as_span().start();
+        match p.as_rule() {
+            Rule::local_var_decl_const => {
+                self.compile_var_decl(p.into_inner(), false)?;
+                Ok(StatementLoc {
+                    pos, label: None, statement: Statement::LocalVarDecl
+                })
+            },
+            Rule::local_var_decl_mut => {
+                let mut statements = Vec::<StatementLoc>::new();
+                let mut var_type_ex = VariableType::Char;
+                let mut var_const = false;
+                let mut signedness_specified = false;
+                let mut signed = self.signed_chars;
+                let memory = VariableMemory::Zeropage;
+                let alignment = 1;
+                let reversed = false;
+                let scattered = None;
+                let holeydma = false;
+                for pair in p.into_inner() {
+                    match pair.as_rule() {
+                        Rule::local_var_type => {
+                            for p in pair.into_inner() {
+                                match p.as_rule() {
+                                    Rule::var_sign => {
+                                        signed = p.as_str().eq("signed");
+                                        signedness_specified = true;
                                     },
-                                    Rule::var_ptr => {
-                                        var_const = true;
-                                        let mut pxx = px.into_inner();
-                                        let id_name = pxx.next().unwrap().as_str().to_string();
-                                        def = VariableDefinition::Value(match pxx.next() {
-                                            Some(x) => match x.as_rule() {
-                                                Rule::ptr_low => {
-                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
-                                                    if val == 255 {
-                                                        VariableValue::LowPtr((id_name, 0))
-                                                    } else {
-                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                                    }
-                                                },
-                                                Rule::ptr_hi => {
-                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
-                                                    if val == 8 {
-                                                        VariableValue::HiPtr((id_name, 0))
-                                                    } else {
-                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                                    }
-                                                },
-                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                            },
-                                            None => VariableValue::LowPtr((id_name, 0)),
-                                        });
-                                    },
-                                    Rule::array_def => {
-                                        start = px.as_span().start();
-                                        memory = match memory {
-                                            VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
-                                            _ => VariableMemory::ROM(0)
-                                        };
-                                        if var_type != VariableType::CharPtr && var_type != VariableType::CharPtrPtr && var_type != VariableType::ShortPtr {
-                                            return Err(self.syntax_error("Array definition provided for something not an array", start));
-                                        }
-                                        if var_type == VariableType::CharPtr || var_type == VariableType::ShortPtr {
-                                            let mut v = Vec::new();
-                                            for pxx in px.into_inner() {
-                                                match pxx.as_rule() {
-                                                    Rule::calc_expr => v.push(VariableValue::Int(self.parse_calc(pxx.into_inner())?)),
-                                                    Rule::var_ptr => {
-                                                        let mut pxxx = pxx.into_inner();
-                                                        let id_name = pxxx.next().unwrap().as_str().to_string();
-                                                        match pxxx.next() {
-                                                            Some(x) => match x.as_rule() {
-                                                                Rule::ptr_low => {
-                                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
-                                                                    if val == 255 {
-                                                                        v.push(VariableValue::LowPtr((id_name, 0)))
-                                                                    } else {
-                                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                                                    }
-                                                                },
-                                                                Rule::ptr_hi => {
-                                                                    let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
-                                                                    if val == 8 {
-                                                                        v.push(VariableValue::HiPtr((id_name, 0)))
-                                                                    } else {
-                                                                        return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                                                    }
-                                                                },
-                                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
-                                                            },
-                                                            None => v.push(VariableValue::LowPtr((id_name, 0))),
-                                                        };
-                                                    },
-                                                    _ => return Err(self.syntax_error(&format!("Expecting constant literal, found {}", pxx.as_str() ), start))
-                                                };
-                                            }
-                                            if let Some(s) = size {
-                                                if s != v.len() {
-                                                    return Err(self.syntax_error("Specified array size is different from actual definition", start));
-                                                }
-                                            }
-                                            size = Some(v.len());
-                                            def = VariableDefinition::Array(v);
-                                        } else {
-                                            let mut v = Vec::new();
-                                            for pxx in px.into_inner() {
-                                                match pxx.as_rule() {
-                                                    Rule::var_ptr => {
-                                                        let mut pxxx = pxx.into_inner();
-                                                        let s = pxxx.next().unwrap().as_str().to_string();
-                                                        let offset = match pxxx.next() {
-                                                            Some(x) => match x.as_rule() {
-                                                                Rule::ptr_offset => {
-                                                                    self.parse_calc(x.into_inner().next().unwrap().into_inner())? as usize
-                                                                },
-                                                                _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", s), start))
-                                                            },
-                                                            None => 0,
-                                                        };
-                                                        let var = self.variables.get(&s);
-                                                        if let Some(vx) = var {
-                                                            if vx.var_type != VariableType::CharPtr && vx.var_type != VariableType::CharPtrPtr {
-                                                                return Err(self.syntax_error(&format!("Reference {} should be a pointer", s), start));
-                                                            }
-                                                        } else {
-                                                            return Err(self.syntax_error(&format!("Unknown identifier {}", s), start));
-                                                        }
-                                                        v.push((s, offset));
-                                                    },
-                                                    Rule::quoted_string => {
-                                                        let k = self.compile_quoted_string(pxx);
-                                                        let name = format!("cctmp{}", self.literal_counter);
-                                                        self.literal_counter += 1;
-                                                        let vb = k.as_bytes();
-                                                        let mut arr = Vec::<VariableValue>::new();
-                                                        for c in vb.iter() {
-                                                            arr.push(VariableValue::Int(*c as i32));
-                                                        }
-                                                        let size = v.len();
-                                                        self.variables.insert(name.clone(), Variable {
-                                                            order: self.variables.len(),
-                                                            signed: false,
-                                                            memory,
-                                                            var_const: true,
-                                                            alignment: 1,
-                                                            def: VariableDefinition::Array(arr),
-                                                            var_type: VariableType::CharPtr, size,
-                                                            reversed: false, scattered: None, holeydma: false, global: true});
-                                                        v.push((name, 0));
-                                                    },
-                                                    _ => return Err(self.syntax_error("Unexpected array value", start)),
-                                                }
-                                            }
-                                            if let Some(s) = size {
-                                                if s != v.len() {
-                                                    return Err(self.syntax_error("Specified array size is different from actual definition", start));
-                                                }
-                                            }
-                                            size = Some(v.len());
-                                            def = VariableDefinition::ArrayOfPointers(v);
-                                        }
-                                        var_const = true;
-                                    },
-                                    Rule::quoted_string => {
-                                        start = px.as_span().start();
-                                        memory = VariableMemory::ROM(0);
-                                        if var_type != VariableType::CharPtr {
-                                            return Err(self.syntax_error("String provided for something not a char*", start));
-                                        }
-                                        let string = self.compile_quoted_string(px);
-                                        let vb = string.as_bytes();
-                                        let mut v = Vec::<VariableValue>::new();
-                                        for c in vb.iter() {
-                                            let d = *c;
-                                            v.push(VariableValue::Int(d as i32));
-                                        }
-                                        size = Some(v.len());
-                                        def = VariableDefinition::Array(v);
-                                        var_const = true;
+                                    Rule::var_simple_type => if p.as_str().starts_with("short") || p.as_str().starts_with("int") {
+                                        var_type_ex = VariableType::Short;
+                                        if !signedness_specified { signed = true; }
                                     },
                                     _ => unreachable!()
-                                } 
-                            },
-                            _ => unreachable!()
-                        }
-                    }
+                                }
+                            }
+                        },
+                        Rule::local_id => {
+                            let mut shortname = "";
+                            let mut name = String::new(); 
+                            let mut size = None;
+                            let mut var_type = var_type_ex;
+                            let mut start = 0;
+                            for p in pair.into_inner() {
+                                match p.as_rule() {
+                                    Rule::pointer => var_type = match var_type {
+                                        VariableType::Char => VariableType::CharPtr,
+                                        _ => return Err(self.syntax_error("Type too complex not supported", start))
+                                    },
+                                    Rule::id_name => {
+                                        shortname = p.as_str();
+                                        name = format!("{}_{}_{shortname}", self.current_function, self.in_scope_variables.len()); 
+                                        start = p.as_span().start();
+                                        if self.variables.get(&name).is_some() {
+                                            return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
+                                        }
+                                    },
+                                    Rule::array_spec => {
+                                        start = p.as_span().start();
+                                        if let Some(px) = p.into_inner().next() {
+                                            size = Some(self.parse_calc(px.into_inner())? as usize);
+                                        }
+                                        if var_type == VariableType::Char {
+                                            var_type = VariableType::CharPtr;
+                                            var_const = true;
+                                        } else if var_type == VariableType::CharPtr {
+                                            var_type = VariableType::CharPtrPtr;
+                                            var_const = true;
+                                        } else if var_type == VariableType::Short {
+                                            var_type = VariableType::ShortPtr;
+                                            var_const = true;
+                                        } else {
+                                            return Err(self.syntax_error("Kind of array not available", start));
+                                        }
+                                    },
+                                    Rule::expr_init_value => {
+                                        if var_const {
+                                            return Err(self.syntax_error("Can't dynamically initialize array this way", start));
+                                        }
+                                        let expr = self.parse_expr_init_value(p.into_inner())?;
+                                        let assign = Expr::BinOp {
+                                            lhs: Box::new(Expr::Identifier(name.clone(), Box::new(Expr::Nothing))),
+                                            op: Operation::Assign,
+                                            rhs: Box::new(expr),
+                                        };
+                                        statements.push(StatementLoc {
+                                            pos, label: None, statement: Statement::Expression(assign)
+                                        });
+                                    },
+                                    _ => unreachable!()
+                                }
+                            }
 
-                    if name != "X" && name != "Y" {
-                        // Insert it into the functions table
-                        if !var_const {
-                            let f = self.functions.get_mut(&self.current_function).unwrap();
-                            f.local_variables.push(name.clone());
+                            if name != "X" && name != "Y" {
+                                // Insert it into the functions table
+                                let f = self.functions.get_mut(&self.current_function).unwrap();
+                                f.local_variables.push(name.clone());
+                                // Insert it also in the local scope
+                                let vars = self.in_scope_variables.last_mut().unwrap();
+                                vars.insert(shortname.into(), name.clone());
+                                // Insert it into the global table
+                                self.variables.insert(name, Variable {
+                                    order: self.variables.len(),
+                                    signed,
+                                    memory,
+                                    var_const,
+                                    alignment,
+                                    def: VariableDefinition::None,
+                                    var_type, size: size.unwrap_or(1),
+                                    reversed, scattered, holeydma, global: false
+                                });
+                            }
+                        },
+                        _ => {
+                            debug!("What's this ? {:?}", pair);
+                            unreachable!()
                         }
-                        // Insert it also in the local scope
-                        let vars = self.in_scope_variables.last_mut().unwrap();
-                        vars.insert(shortname.into(), name.clone());
-                        // Insert it into the global table
-                        self.variables.insert(name, Variable {
-                            order: self.variables.len(),
-                            signed,
-                            memory,
-                            var_const,
-                            alignment,
-                            def,
-                            var_type, size: size.unwrap_or(1),
-                            reversed, scattered, holeydma, global: false
-                        });
                     }
-                },
-                _ => {
-                    debug!("What's this ? {:?}", pair);
-                    unreachable!()
                 }
+                Ok(StatementLoc {
+                    pos, label: None, statement: Statement::Block(statements) 
+                })
+            },
+            _ => {
+                debug!("What's this ? {:?}", p);
+                unreachable!()
             }
         }
-        Ok(())
     }
 
     fn compile_block(&mut self, p: Pair<'a, Rule>) -> Result<StatementLoc<'a>, Error>
@@ -1397,7 +1389,7 @@ impl<'a> CompilerState<'a> {
         for pair in pairs {
             match pair.as_rule() {
                 Rule::var_decl => {
-                    self.compile_var_decl(pair.into_inner())?;
+                    self.compile_var_decl(pair.into_inner(), true)?;
                 },
                 Rule::func_decl => {
                     self.compile_func_decl(pair.into_inner())?;
@@ -1507,6 +1499,25 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::sizeof))
         .op(Op::postfix(Rule::call) | Op::postfix(Rule::mm) | Op::postfix(Rule::pp));
    
+    let pratt_init_value =
+        PrattParser::new()
+        .op(Op::infix(Rule::assign, Assoc::Right) | Op::infix(Rule::mass, Assoc::Right) | Op::infix(Rule::pass, Assoc::Right) |
+            Op::infix(Rule::andass, Assoc::Right) | Op::infix(Rule::orass, Assoc::Right) | Op::infix(Rule::xorass, Assoc::Right) |
+            Op::infix(Rule::blsass, Assoc::Right) | Op::infix(Rule::brsass, Assoc::Right))
+        .op(Op::infix(Rule::ternary_cond1, Assoc::Right))
+        .op(Op::infix(Rule::ternary_cond2, Assoc::Right))
+        .op(Op::infix(Rule::lor, Assoc::Left))
+        .op(Op::infix(Rule::land, Assoc::Left))
+        .op(Op::infix(Rule::or, Assoc::Left))
+        .op(Op::infix(Rule::xor, Assoc::Left))
+        .op(Op::infix(Rule::and, Assoc::Left))
+        .op(Op::infix(Rule::eq, Assoc::Left) | Op::infix(Rule::neq, Assoc::Left) | Op::infix(Rule::gt, Assoc::Left) | Op::infix(Rule::gte, Assoc::Left) | Op::infix(Rule::lt, Assoc::Left) | Op::infix(Rule::lte, Assoc::Left))
+        .op(Op::infix(Rule::brs, Assoc::Left) | Op::infix(Rule::bls, Assoc::Left))
+        .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
+        .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
+        .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::sizeof))
+        .op(Op::postfix(Rule::call) | Op::postfix(Rule::mm) | Op::postfix(Rule::pp));
+   
     let calculator = 
         PrattParser::new()
         .op(Op::infix(Rule::ternary_cond2, Assoc::Right))
@@ -1542,13 +1553,13 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
     debug!("Mapped lines = {:?}", mapped_lines);
 
     let preprocessed_utf8 = std::str::from_utf8(&preprocessed)?;
-    debug!("Preprcessed: {}", preprocessed_utf8);
+    debug!("Preprocessed: {}", preprocessed_utf8);
 
     // Prepare the state
     let mut state = CompilerState {
         variables: HashMap::new(),
         functions: HashMap::new(),
-        pratt, calculator,
+        pratt, pratt_init_value, calculator,
         mapped_lines: &mapped_lines,
         preprocessed_utf8,
         included_assembler: Vec::<(String, Option<String>, Option<usize>)>::new(),
