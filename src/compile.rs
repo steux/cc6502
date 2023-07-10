@@ -171,8 +171,8 @@ pub(crate) enum Statement<'a> {
 
 #[derive(Debug, Clone)]
 pub struct StatementLoc<'a> {
-    pub pos: usize,
-    pub label: Option<String>,
+    pub(crate) pos: usize,
+    pub(crate) label: Option<String>,
     pub(crate) statement: Statement<'a>
 }
 
@@ -182,10 +182,11 @@ pub struct Function<'a> {
     pub inline: bool,
     pub bank: u32,
     pub interrupt: bool,
-    pub return_signed: bool,
-    pub return_type: Option<VariableType>,
+    pub(crate) return_signed: bool,
+    pub(crate) return_type: Option<VariableType>,
     pub code: Option<StatementLoc<'a>>,
-    pub local_variables: Vec<String> 
+    pub local_variables: Vec<String>,
+    pub(crate) parameters: Vec<String>
 }
 
 pub struct CompilerState<'a> {
@@ -1312,6 +1313,7 @@ impl<'a> CompilerState<'a> {
         let mut return_type = None;
         let mut interrupt = false;
         let mut name = String::new();
+        let mut parameters = Vec::<String>::new();
         for pair in pairs {
             let start = pair.as_span().start();
             match pair.as_rule() {
@@ -1352,6 +1354,12 @@ impl<'a> CompilerState<'a> {
                     for i in &self.variables {
                         map.insert(i.0.into(), i.0.into());
                     }
+                    let mut local_variables = Vec::new();
+                    for i in &parameters {
+                        let s = format!("{}_{i}", self.current_function);
+                        map.insert(i.clone(), s.clone());
+                        local_variables.push(s);
+                    }
                     self.in_scope_variables.push(map);
                     self.functions.insert(name.clone(), Function {
                         order: self.functions.len(),
@@ -1361,7 +1369,8 @@ impl<'a> CompilerState<'a> {
                         interrupt,
                         return_signed,
                         return_type,
-                        local_variables: Vec::new()
+                        local_variables,
+                        parameters
                     });
                     let code = self.compile_block(pair)?;
                     let f = self.functions.get_mut(&self.current_function).unwrap();
@@ -1369,9 +1378,91 @@ impl<'a> CompilerState<'a> {
                     self.in_scope_variables.clear();
                     return Ok(())
                 },
-                _ => unreachable!(), 
-            };
-        }
+                Rule::parameters => {
+                    let px = pair.into_inner();
+                    for p in px {
+                        let param = p.into_inner();
+                        let mut var_type = VariableType::Char;
+                        let mut var_const = false;
+                        let mut signedness_specified = false;
+                        let mut signed = self.signed_chars;
+                        let memory = VariableMemory::Zeropage;
+                        let alignment = 1;
+                        let reversed = false;
+                        let scattered = None;
+                        let holeydma = false;
+                        let mut shortname = "";
+                        let mut longname = String::new(); 
+                        let mut size = None;
+                        let mut start = 0;
+                        for pair in param {
+                            match pair.as_rule() {
+                                Rule::local_var_type => {
+                                    for p in pair.into_inner() {
+                                        match p.as_rule() {
+                                            Rule::var_sign => {
+                                                signed = p.as_str().eq("signed");
+                                                signedness_specified = true;
+                                            },
+                                            Rule::var_simple_type => if p.as_str().starts_with("short") || p.as_str().starts_with("int") {
+                                                var_type = VariableType::Short;
+                                                if !signedness_specified { signed = true; }
+                                            },
+                                            _ => unreachable!()
+                                        }
+                                    }
+                                },
+                                Rule::pointer => var_type = match var_type {
+                                    VariableType::Char => VariableType::CharPtr,
+                                    _ => return Err(self.syntax_error("Type too complex not supported", start))
+                                },
+                                Rule::id_name => {
+                                    shortname = pair.as_str();
+                                    longname = format!("{name}_{shortname}"); 
+                                    start = pair.as_span().start();
+                                    if self.variables.get(&longname).is_some() {
+                                        return Err(self.syntax_error(&format!("Variable {} already defined", longname), start));
+                                    }
+                                },
+                                Rule::array_spec => {
+                                    start = pair.as_span().start();
+                                    if let Some(px) = pair.into_inner().next() {
+                                        size = Some(self.parse_calc(px.into_inner())? as usize);
+                                    }
+                                    if var_type == VariableType::Char {
+                                        var_type = VariableType::CharPtr;
+                                        var_const = true;
+                                    } else if var_type == VariableType::CharPtr {
+                                        var_type = VariableType::CharPtrPtr;
+                                        var_const = true;
+                                    } else if var_type == VariableType::Short {
+                                        var_type = VariableType::ShortPtr;
+                                        var_const = true;
+                                    } else {
+                                        return Err(self.syntax_error("Kind of array not available", start));
+                                    }
+                                },
+                                _ => unreachable!()
+                            }
+                        }
+                        // Insert it into the global table
+                        let var = Variable {
+                            order: self.variables.len(),
+                            signed,
+                            memory,
+                            var_const,
+                            alignment,
+                            def: VariableDefinition::None,
+                            var_type, size: size.unwrap_or(1),
+                            reversed, scattered, holeydma, global: false
+                        };
+                        self.variables.insert(longname, var);
+                        parameters.push(shortname.into());
+                    }
+                },
+                _ => unreachable!()
+            } 
+        };
         // This is just a prototype definition
         if self.functions.get(&name).is_none() {
             self.functions.insert(name, Function {
@@ -1382,7 +1473,8 @@ impl<'a> CompilerState<'a> {
                 interrupt,
                 return_signed,
                 return_type,
-                local_variables: Vec::new()
+                local_variables: Vec::new(),
+                parameters
             });
         }
         Ok(())

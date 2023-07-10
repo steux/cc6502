@@ -1325,4 +1325,16 @@ char i; void main() { i = one; }";
         assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 2\n"));
         assert!(result.contains("main\tSUBROUTINE\n\tLDA #0\n\tSTA main_1_i\n\tSTA main_1_i+1"));
     }
+    
+    #[test]
+    fn params_test1() {
+        let args = sargs(1);
+        let input = "void f(char x, int y) { x = y; }; void main() { f(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
+        assert!(result.contains("f\tSUBROUTINE\n\tLDA f_y\n\tSTA f_x\n\tRTS"));
+    }
 }
