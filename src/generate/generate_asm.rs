@@ -424,10 +424,10 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(signed)
     }
 
-    pub fn inline(&mut self, s: &str) -> Result<(), Error> {
+    pub fn inline(&mut self, s: &str, size: Option<u32>) -> Result<(), Error> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
-            code.append_inline(s.to_string());
+            code.append_inline(s.to_string(), size);
         }
         Ok(()) 
     } 

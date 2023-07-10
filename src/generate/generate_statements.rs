@@ -539,9 +539,9 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    fn generate_asm_statement(&mut self, s: &'a str) -> Result<(), Error>
+    fn generate_asm_statement(&mut self, s: &'a str, size: Option<u32>) -> Result<(), Error>
     {
-        self.inline(s)?;
+        self.inline(s, size)?;
         Ok(())
     }
 
@@ -682,7 +682,7 @@ impl<'a, 'b> GeneratorState<'a> {
             Statement::Break => { self.generate_break(code.pos)?; }
             Statement::Continue => { self.generate_continue(code.pos)?; }
             Statement::Return(e) => { self.generate_return(e, code.pos)?; }
-            Statement::Asm(s) => { self.generate_asm_statement(s)?; }
+            Statement::Asm(s, size) => { self.generate_asm_statement(s, *size)?; }
             Statement::Strobe(s) => { self.generate_strobe_statement(s, code.pos)?; }
             Statement::Store(e) => { 
                 let param = self.generate_expr(e, code.pos, false, false)?;

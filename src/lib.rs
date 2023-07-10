@@ -27,7 +27,7 @@
 // DONE: Detect & 0xff and return lower 8 bits
 // DONE: Detect 16 bits aithm bad carry propagation
 // DONE: Implement function return in Acc
-// TODO: Add nbbytes param to asm statement
+// DONE: Add nbbytes param to asm statement
 // TODO: Add local variables stack storage code
 // TODO: Add functions params support
 
@@ -1064,9 +1064,20 @@ char i; void main() { i = one; }";
     } 
 
     #[test]
-    fn asm_test() {
+    fn asm_test1() {
         let args = sargs(1); 
         let input = "void main() { asm(\"LDA #32\\n\\tSTA cctmp\"); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #32\n\tSTA cctmp\n\t"));
+    } 
+    
+    #[test]
+    fn asm_test2() {
+        let args = sargs(1); 
+        let input = "void main() { asm(\"LDA #32\\n\\tSTA cctmp\", 4); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();

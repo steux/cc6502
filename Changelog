@@ -1,3 +1,6 @@
+v0.9.1 (07/10/2023) :
+    - Added support for bytes hint in asm statment
+
 v0.9.0 (07/09/2023) :
     - Added support for local variables
     - Corrected a small bug wrt ++/-- in subscript of 16-bits instructions

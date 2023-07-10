@@ -65,7 +65,7 @@ pub struct AsmInstruction {
 enum AsmLine {
     Label(String),
     Instruction(AsmInstruction),
-    Inline(String),
+    Inline(String, u32),
     Comment(String),
     Dummy,
 }
@@ -98,7 +98,7 @@ impl AsmLine {
                     }
                 }
             },
-            AsmLine::Inline(inst) => {
+            AsmLine::Inline(inst, _) => {
                 s += writer.write(format!("\t{}\n", inst).as_bytes())?;
             },
             AsmLine::Comment(comment) => {
@@ -129,8 +129,8 @@ impl AssemblyCode {
                 AsmLine::Instruction(i) => {
                     size += i.nb_bytes;
                 },
-                AsmLine::Inline(_) => {
-                    size += 3; // Worst case asm instruction
+                AsmLine::Inline(_, s) => {
+                    size += s;
                 },
                 _ => {}
             }
@@ -142,8 +142,8 @@ impl AssemblyCode {
         self.code.push(AsmLine::Instruction(inst));
     }
 
-    pub fn append_inline(&mut self, s: String) {
-        self.code.push(AsmLine::Inline(s));
+    pub fn append_inline(&mut self, s: String, size: Option<u32>) {
+        self.code.push(AsmLine::Inline(s, size.unwrap_or(3)));
     }
 
     pub fn append_label(&mut self, s: String) {
@@ -556,8 +556,8 @@ impl AssemblyCode {
                                                 break;
                                             } 
                                         },
-                                        AsmLine::Inline(_) => {
-                                            bytes_above += 3; // Worst case asm instruction
+                                        AsmLine::Inline(_, s) => {
+                                            bytes_above += s; 
                                         },
                                         AsmLine::Instruction(k) => {
                                             debug!("Iter above: {:?}", k);
@@ -574,8 +574,8 @@ impl AssemblyCode {
                                             break;
                                         } 
                                     },
-                                    Some(AsmLine::Inline(_)) => {
-                                        bytes_below += 3; // Worst case asm instruction
+                                    Some(AsmLine::Inline(_, s)) => {
+                                        bytes_below += s; 
                                     },
                                     Some(AsmLine::Instruction(k)) => {
                                         debug!("Iter below: {:?}", k);

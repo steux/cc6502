@@ -131,7 +131,7 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone)]
-pub enum Statement<'a> {
+pub(crate) enum Statement<'a> {
     Block(Vec<StatementLoc<'a>>),
     Expression(Expr),
     For { 
@@ -160,7 +160,7 @@ pub enum Statement<'a> {
     Break,
     Continue,
     Return(Expr),
-    Asm(String),
+    Asm(String, Option<u32>),
     Strobe(Expr),
     Load(Expr),
     Store(Expr),
@@ -173,7 +173,7 @@ pub enum Statement<'a> {
 pub struct StatementLoc<'a> {
     pub pos: usize,
     pub label: Option<String>,
-    pub statement: Statement<'a>
+    pub(crate) statement: Statement<'a>
 }
 
 #[derive(Debug)]
@@ -703,10 +703,14 @@ impl<'a> CompilerState<'a> {
                 })
             },
             Rule::asm_statement => {
-                let mut s = self.compile_quoted_string(pair.into_inner().next().unwrap());
+                let mut px = pair.into_inner();
+                let mut s = self.compile_quoted_string(px.next().unwrap());
+                let size = if let Some(x) = px.next() {
+                    Some(self.parse_calc(x.into_inner())? as u32)
+                } else { None };
                 s.pop();
                 Ok(StatementLoc {
-                    pos, label: None, statement: Statement::Asm(s)
+                    pos, label: None, statement: Statement::Asm(s, size)
                 })
             },
             Rule::strobe_statement => {
