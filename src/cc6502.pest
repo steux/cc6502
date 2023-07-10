@@ -55,7 +55,9 @@ ptr_low = { "&" ~ calc_expr }
 ptr_offset = { "+" ~ calc_expr }
 pointer = { "*" }
 
-func_decl = { inline? ~ bank? ~ ("void" | (var_sign? ~ var_simple_type?)) ~ interrupt? ~ id_name ~ "(" ~ ("void")? ~ ")" ~ (";" | block) ~ ";"*}
+func_decl = { inline? ~ bank? ~ ("void" | (var_sign? ~ var_simple_type?)) ~ interrupt? ~ id_name ~ "(" ~ ("void" | parameters)? ~ ")" ~ (";" | block) ~ ";"*}
+parameters = { parameter ~ ("," ~ parameter)* }
+parameter = { local_var_type ~ pointer* ~ id_name ~ array_spec? }
 inline = { "inline" }
 interrupt = { "interrupt" }
 bank = ${ "bank" ~ bank_number }
@@ -77,14 +79,14 @@ statement = { label? ~
     | break_statement
     | continue_statement
     | return_statement
-    | expr ~ ";"
-    | nothing ~ ";"
     | asm_statement
     | strobe_statement
     | load_statement
     | store_statement
     | csleep_statement
     | goto_statement
+    | expr ~ ";"
+    | nothing ~ ";"
     ) }
 do_while = { "do" ~ statement ~ "while" ~ "(" ~ expr ~ ")" ~ ";" }
 while_do = { "while" ~ "(" ~ expr ~ ")"~ statement }
@@ -159,7 +161,7 @@ expr       =   { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ pos
     postfix  =  _{ pp | mm | call }
       pp     =   { "++" } // Increment
       mm     =   { "--" } // Decrement
-      call   =   { "()" } // Function call
+      call   =   { "(" ~ expr? ~ ")" } // Function call
     primary  =  _{ int | identifier | "(" ~ expr ~ ")" | quoted_string }
 
 identifier  = { id_name ~ subscript? }
