@@ -75,7 +75,7 @@ impl<'a, 'b> GeneratorState<'a> {
         None
     }
 
-    fn generate_function_call(&mut self, expr: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_function_call(&mut self, expr: &Expr, params: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
     {
         match expr {
             Expr::Identifier(var, sub) => {
@@ -384,8 +384,8 @@ impl<'a, 'b> GeneratorState<'a> {
                     },
                 }
             },
-            Expr::FunctionCall(expr) => {
-                self.generate_function_call(expr, pos)
+            Expr::FunctionCall(expr, params) => {
+                self.generate_function_call(expr, params, pos)
             },
             Expr::MinusMinus(expr, false) => {
                 let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;

@@ -19,6 +19,8 @@
 */
 
 use std::{collections::HashMap, hash::Hash, unreachable};
+use std::rc::Rc;
+use std::sync::Mutex;
 
 use log::debug;
 
@@ -114,7 +116,7 @@ pub enum Expr {
     Nothing,
     Integer(i32),
     Identifier(String, Box<Expr>),
-    FunctionCall(Box<Expr>),
+    FunctionCall(Box<Expr>, Box<Expr>),
     BinOp {
         lhs: Box<Expr>,
         op: Operation,
@@ -331,18 +333,20 @@ impl<'a> CompilerState<'a> {
 
     fn parse_expr_ex(&self, pairs: Pairs<'a, Rule>) -> Result<(Expr, HashMap<String, String>), Error>
     {
-        let mut literal_counter = self.literal_counter;
-        let mut literal_strings = HashMap::<String, String>::new(); 
+        let literal_counter = Rc::new(Mutex::new(self.literal_counter));
+        let literal_strings = Rc::new(Mutex::new(HashMap::<String, String>::new())); 
         let res = self.pratt
             .map_primary(|primary| -> Result<Expr, Error> {
                 match primary.as_rule() {
                     Rule::int => Ok(Expr::Integer(parse_int(primary.into_inner().next().unwrap()))),
                     Rule::expr => {
                         let res = self.parse_expr_ex(primary.into_inner())?;
+                        let mut lit_strs = literal_strings.lock().unwrap();
                         for k in &res.1 {
-                            literal_strings.insert(k.0.clone(), k.1.clone());
+                            lit_strs.insert(k.0.clone(), k.1.clone());
                         }
-                        literal_counter += res.1.len();
+                        let mut l = literal_counter.lock().unwrap();
+                        *l += res.1.len();
                         Ok(res.0) 
                     },
                     Rule::identifier => {
@@ -352,9 +356,11 @@ impl<'a> CompilerState<'a> {
                     Rule::quoted_string => {
                         // Create a temp variable pointing to this quoted_string
                         let v = self.compile_quoted_string(primary);
-                        let name = format!("cctmp{}", literal_counter);
-                        literal_counter += 1;
-                        literal_strings.insert(name.clone(), v);
+                        let mut l = literal_counter.lock().unwrap();
+                        let name = format!("cctmp{}", l);
+                        *l += 1;
+                        let mut lit_strs = literal_strings.lock().unwrap();
+                        lit_strs.insert(name.clone(), v);
                         Ok(Expr::TmpId(name))
                     },
                     rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
@@ -413,12 +419,25 @@ impl<'a> CompilerState<'a> {
         .map_postfix(|lhs, op| match op.as_rule() {
             Rule::mm => Ok(Expr::MinusMinus(Box::new(lhs?), true)),
             Rule::pp => Ok(Expr::PlusPlus(Box::new(lhs?), true)),
-            Rule::call =>Ok(Expr::FunctionCall(Box::new(lhs?))),             
+            Rule::call => {
+                let params = if let Some(x) = op.into_inner().next() {
+                    let res = self.parse_expr_ex(x.into_inner())?;
+                    let mut lit_strs = literal_strings.lock().unwrap();
+                    for k in &res.1 {
+                        lit_strs.insert(k.0.clone(), k.1.clone());
+                    }
+                    let mut l = literal_counter.lock().unwrap();
+                    *l += res.1.len();
+                    res.0 
+                } else { Expr::Nothing };
+                Ok(Expr::FunctionCall(Box::new(lhs?), Box::new(params)))
+            },             
             _ => unreachable!(),
         })
         .parse(pairs);
+        let lit_strs = Rc::into_inner(literal_strings).unwrap().into_inner().unwrap();
         match res {
-            Ok(r) => Ok((r, literal_strings)),
+            Ok(r) => Ok((r, lit_strs)),
             Err(x) => Err(x),
         }
     }
@@ -455,18 +474,20 @@ impl<'a> CompilerState<'a> {
 
     fn parse_expr_init_value_ex(&self, pairs: Pairs<'a, Rule>) -> Result<(Expr, HashMap<String, String>), Error>
     {
-        let mut literal_counter = self.literal_counter;
-        let mut literal_strings = HashMap::<String, String>::new(); 
+        let literal_counter = Rc::new(Mutex::new(self.literal_counter));
+        let literal_strings = Rc::new(Mutex::new(HashMap::<String, String>::new())); 
         let res = self.pratt_init_value
             .map_primary(|primary| -> Result<Expr, Error> {
                 match primary.as_rule() {
                     Rule::int => Ok(Expr::Integer(parse_int(primary.into_inner().next().unwrap()))),
                     Rule::expr => {
                         let res = self.parse_expr_ex(primary.into_inner())?;
+                        let mut lit_strs = literal_strings.lock().unwrap();
                         for k in &res.1 {
-                            literal_strings.insert(k.0.clone(), k.1.clone());
+                            lit_strs.insert(k.0.clone(), k.1.clone());
                         }
-                        literal_counter += res.1.len();
+                        let mut l = literal_counter.lock().unwrap();
+                        *l += res.1.len();
                         Ok(res.0) 
                     },
                     Rule::identifier => {
@@ -476,9 +497,11 @@ impl<'a> CompilerState<'a> {
                     Rule::quoted_string => {
                         // Create a temp variable pointing to this quoted_string
                         let v = self.compile_quoted_string(primary);
-                        let name = format!("cctmp{}", literal_counter);
-                        literal_counter += 1;
-                        literal_strings.insert(name.clone(), v);
+                        let mut l = literal_counter.lock().unwrap();
+                        let name = format!("cctmp{}", l);
+                        *l += 1;
+                        let mut lit_strs = literal_strings.lock().unwrap();
+                        lit_strs.insert(name.clone(), v);
                         Ok(Expr::TmpId(name))
                     },
                     rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
@@ -536,12 +559,25 @@ impl<'a> CompilerState<'a> {
         .map_postfix(|lhs, op| match op.as_rule() {
             Rule::mm => Ok(Expr::MinusMinus(Box::new(lhs?), true)),
             Rule::pp => Ok(Expr::PlusPlus(Box::new(lhs?), true)),
-            Rule::call =>Ok(Expr::FunctionCall(Box::new(lhs?))),             
+            Rule::call => {
+                let params = if let Some(x) = op.into_inner().next() {
+                    let res = self.parse_expr_ex(x.into_inner())?;
+                    let mut lit_strs = literal_strings.lock().unwrap();
+                    for k in &res.1 {
+                        lit_strs.insert(k.0.clone(), k.1.clone());
+                    }
+                    let mut l = literal_counter.lock().unwrap();
+                    *l += res.1.len();
+                    res.0 
+                } else { Expr::Nothing };
+                Ok(Expr::FunctionCall(Box::new(lhs?), Box::new(params)))
+            },             
             _ => unreachable!(),
         })
         .parse(pairs);
+        let lit_strs = Rc::into_inner(literal_strings).unwrap().into_inner().unwrap();
         match res {
-            Ok(r) => Ok((r, literal_strings)),
+            Ok(r) => Ok((r, lit_strs)),
             Err(x) => Err(x),
         }
     }
