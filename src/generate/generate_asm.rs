@@ -61,12 +61,12 @@ impl<'a> GeneratorState<'a> {
         }
     }
     
-    pub fn sasm(&mut self, mnemonic: AsmMnemonic) -> Result<bool, Error>
+    pub(crate) fn sasm(&mut self, mnemonic: AsmMnemonic) -> Result<bool, Error>
     {
         self.asm(mnemonic, &ExprType::Nothing, 0, false)
     }
 
-    pub fn sasm_protected(&mut self, mnemonic: AsmMnemonic) -> Result<bool, Error>
+    pub(crate) fn sasm_protected(&mut self, mnemonic: AsmMnemonic) -> Result<bool, Error>
     {
         self.protected = true;
         let ret = self.asm(mnemonic, &ExprType::Nothing, 0, false);
@@ -74,7 +74,7 @@ impl<'a> GeneratorState<'a> {
         ret
     }
 
-    pub fn asm(&mut self, mnemonic: AsmMnemonic, operand: &ExprType, pos: usize, high_byte: bool) -> Result<bool, Error>
+    pub(crate) fn asm(&mut self, mnemonic: AsmMnemonic, operand: &ExprType, pos: usize, high_byte: bool) -> Result<bool, Error>
     {
         let dasm_operand: String;
         let signed;
@@ -424,7 +424,7 @@ impl<'a> GeneratorState<'a> {
         Ok(signed)
     }
 
-    pub fn inline(&mut self, s: &str, size: Option<u32>) -> Result<(), Error> {
+    pub(crate) fn inline(&mut self, s: &str, size: Option<u32>) -> Result<(), Error> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             code.append_inline(s.to_string(), size);
@@ -432,7 +432,7 @@ impl<'a> GeneratorState<'a> {
         Ok(()) 
     } 
 
-    pub fn comment(&mut self, s: &str) -> Result<(), Error> {
+    pub(crate) fn comment(&mut self, s: &str) -> Result<(), Error> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             code.append_comment(s.trim_end().to_string());
@@ -440,7 +440,7 @@ impl<'a> GeneratorState<'a> {
         Ok(()) 
     } 
 
-    pub fn label(&mut self, l: &str) -> Result<(), Error> {
+    pub(crate) fn label(&mut self, l: &str) -> Result<(), Error> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             code.append_label(l.to_string());
@@ -450,7 +450,7 @@ impl<'a> GeneratorState<'a> {
         Ok(()) 
     } 
 
-    pub fn dummy(&mut self) -> Option<usize> {
+    pub(crate) fn dummy(&mut self) -> Option<usize> {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             Some(code.append_dummy())
@@ -459,7 +459,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn asm_save_y(&mut self, line: usize) {
+    pub(crate) fn asm_save_y(&mut self, line: usize) {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             let instruction = AsmInstruction { mnemonic: STY, dasm_operand: "cctmp".into(), cycles: 3, cycles_alt: None, nb_bytes: 2, protected: false };
@@ -467,7 +467,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn asm_restore_y(&mut self) {
+    pub(crate) fn asm_restore_y(&mut self) {
         if let Some(f) = &self.current_function {
             let code : &mut AssemblyCode = self.functions_code.get_mut(f).unwrap();
             let instruction = AsmInstruction { mnemonic: LDY, dasm_operand: "cctmp".into(), cycles: 3, cycles_alt: None, nb_bytes: 2, protected: false };
@@ -476,7 +476,7 @@ impl<'a> GeneratorState<'a> {
     }
 
     // Inline code
-    pub fn push_code(&mut self, f: &str, pos: usize) -> Result<(), Error> {
+    pub(crate) fn push_code(&mut self, f: &str, pos: usize) -> Result<(), Error> {
         self.inline_label_counter += 1;
         if let Some(fx) = &self.current_function {
             let code2: AssemblyCode = match self.functions_code.get(f) {

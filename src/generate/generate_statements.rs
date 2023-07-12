@@ -270,7 +270,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_expr(&mut self, expr: &Expr, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_expr(&mut self, expr: &Expr, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType, Error>
     {
         debug!("Expression: {:?}, high_byte: {}", expr, high_byte);
         match expr {

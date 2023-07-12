@@ -27,7 +27,7 @@ use crate::compile::*;
 use crate::assemble::AssemblyCode;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ExprType {
+pub(crate) enum ExprType {
     Nothing,
     Immediate(i32),
     Tmp(bool),

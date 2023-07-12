@@ -27,7 +27,7 @@ use crate::assemble::AsmMnemonic::*;
 use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a> GeneratorState<'a> {
-    pub fn generate_arithm(&mut self, l: &ExprType, op: &Operation, r: &ExprType,  pos: usize, high_byte: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_arithm(&mut self, l: &ExprType, op: &Operation, r: &ExprType,  pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
         debug!("Arithm: {:?},{:?},{:?}", l, op, r);    
@@ -238,7 +238,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_shift(&mut self, left: &ExprType, op: &Operation, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_shift(&mut self, left: &ExprType, op: &Operation, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
         let signed;
@@ -445,7 +445,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_plusplus(&mut self, expr_type: &ExprType, pos: usize, plusplus: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_plusplus(&mut self, expr_type: &ExprType, pos: usize, plusplus: bool) -> Result<ExprType, Error>
     {
         let operation = if plusplus { INC } else { DEC };
         match expr_type {
@@ -553,7 +553,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_neg(&mut self, expr: &Expr, pos: usize, high_byte: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_neg(&mut self, expr: &Expr, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(-*i)),
@@ -565,7 +565,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_not(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
+    pub(crate) fn generate_not(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => if *i != 0 {
@@ -612,7 +612,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_bnot(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
+    pub(crate) fn generate_bnot(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(!*i)),
@@ -624,7 +624,7 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_sign_extend(&mut self, expr: ExprType, pos: usize) -> Result<ExprType, Error>
+    pub(crate) fn generate_sign_extend(&mut self, expr: ExprType, pos: usize) -> Result<ExprType, Error>
     {
         if self.acc_in_use { self.sasm(PHA)?; }
         #[cfg(constant_time)]

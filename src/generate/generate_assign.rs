@@ -26,7 +26,7 @@ use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a> GeneratorState<'a> {
 
-    pub fn generate_assign(&mut self, left: &ExprType, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
+    pub(crate) fn generate_assign(&mut self, left: &ExprType, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         match left {
             ExprType::X => {
