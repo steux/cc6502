@@ -26,8 +26,8 @@ use crate::assemble::AsmMnemonic::*;
 
 use super::{GeneratorState, ExprType, FlagsState};
 
-impl<'a, 'b> GeneratorState<'a> {
-    pub fn generate_arithm(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>,  pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+impl<'a> GeneratorState<'a> {
+    pub fn generate_arithm(&mut self, l: &ExprType, op: &Operation, r: &ExprType,  pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
         debug!("Arithm: {:?},{:?},{:?}", l, op, r);    
@@ -95,13 +95,13 @@ impl<'a, 'b> GeneratorState<'a> {
                 if let ExprType::Immediate(r) = right2 {
                     if v.var_type == VariableType::CharPtr && !*eight_bits && v.var_const {
                         match op {
-                            Operation::Add(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off + *r)),
-                            Operation::Sub(_) => return Ok(ExprType::Absolute(variable, *eight_bits, *off - *r)),
+                            Operation::Add(_) => return Ok(ExprType::Absolute(variable.clone(), *eight_bits, *off + *r)),
+                            Operation::Sub(_) => return Ok(ExprType::Absolute(variable.clone(), *eight_bits, *off - *r)),
                             Operation::And(_) => if *r == 255 {
                                 if high_byte {
                                     return Ok(ExprType::Immediate(0));
                                 } else {
-                                    return Ok(ExprType::Absolute(variable, true, *off));
+                                    return Ok(ExprType::Absolute(variable.clone(), true, *off));
                                 }
                             },
                             _ => (),
@@ -112,7 +112,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 if high_byte {
                                     return Ok(ExprType::Immediate(0));
                                 } else {
-                                    return Ok(ExprType::Absolute(variable, true, *off));
+                                    return Ok(ExprType::Absolute(variable.clone(), true, *off));
                                 }
                             },
                             _ => (),
@@ -238,7 +238,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_shift(&mut self, left: &ExprType<'a>, op: &Operation, right: &ExprType<'a>, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_shift(&mut self, left: &ExprType, op: &Operation, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
         let signed;
@@ -279,7 +279,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                         return Ok(ExprType::A(signed));
                                     }
                                 } else {
-                                    return Ok(ExprType::Absolute(varname, true, offset + v.size as i32));
+                                    return Ok(ExprType::Absolute(varname.clone(), true, offset + v.size as i32));
                                 }
                             } else {
                                 return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
@@ -445,7 +445,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_plusplus(&mut self, expr_type: &ExprType<'a>, pos: usize, plusplus: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_plusplus(&mut self, expr_type: &ExprType, pos: usize, plusplus: bool) -> Result<ExprType, Error>
     {
         let operation = if plusplus { INC } else { DEC };
         match expr_type {
@@ -476,9 +476,9 @@ impl<'a, 'b> GeneratorState<'a> {
                 }; 
                 if use_inc {
                     self.asm(operation, expr_type, pos, false)?;
-                    self.flags = FlagsState::Absolute(variable, *eight_bits, *offset);
+                    self.flags = FlagsState::Absolute(variable.clone(), *eight_bits, *offset);
                     self.carry_flag_ok = false;
-                    Ok(ExprType::Absolute(variable, *eight_bits, *offset))
+                    Ok(ExprType::Absolute(variable.clone(), *eight_bits, *offset))
                 } else {
                     // Implment optimization for inc on pointers
                     if v.var_type == VariableType::Short || (v.var_type == VariableType::CharPtr && !eight_bits) {
@@ -491,10 +491,10 @@ impl<'a, 'b> GeneratorState<'a> {
                             self.local_label_counter_if += 1;
                             let ifend_label = format!(".ifend{}", self.local_label_counter_if);
                             self.asm(INC, expr_type, pos, false)?;
-                            self.asm(BNE, &ExprType::Label(&ifend_label), 0, false)?;
+                            self.asm(BNE, &ExprType::Label(ifend_label.clone()), 0, false)?;
                             self.asm(INC, expr_type, pos, true)?;
                             self.label(&ifend_label)?;
-                            self.flags = FlagsState::Absolute(variable, *eight_bits, *offset);
+                            self.flags = FlagsState::Absolute(variable.clone(), *eight_bits, *offset);
                             self.carry_flag_ok = false;
                         } else {
 // Decrement :
@@ -508,7 +508,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 self.sasm(PHA)?; 
                             }
                             self.asm(LDA, expr_type, pos, false)?;
-                            self.asm(BNE, &ExprType::Label(&ifend_label), 0, false)?;
+                            self.asm(BNE, &ExprType::Label(ifend_label.clone()), 0, false)?;
                             self.asm(DEC, expr_type, pos, true)?;
                             self.label(&ifend_label)?;
                             self.asm(DEC, expr_type, pos, false)?;
@@ -518,7 +518,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                 self.sasm(PLA)?; 
                             }
                         }
-                        Ok(ExprType::Absolute(variable, *eight_bits, *offset))
+                        Ok(ExprType::Absolute(variable.clone(), *eight_bits, *offset))
                     } else {
                         let op = if plusplus { Operation::Add(false) } else { Operation::Sub(false) };
                         let right = ExprType::Immediate(1);
@@ -534,8 +534,8 @@ impl<'a, 'b> GeneratorState<'a> {
             },
             ExprType::AbsoluteX(variable) => {
                 self.asm(operation, expr_type, pos, false)?;
-                self.flags = FlagsState::AbsoluteX(variable);
-                Ok(ExprType::AbsoluteX(variable))
+                self.flags = FlagsState::AbsoluteX(variable.clone());
+                Ok(ExprType::AbsoluteX(variable.clone()))
             },
             ExprType::AbsoluteY(_) => {
                 let op = if plusplus { Operation::Add(false) } else { Operation::Sub(false) };
@@ -553,7 +553,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_neg(&mut self, expr: &'a Expr, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_neg(&mut self, expr: &Expr, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(-*i)),
@@ -565,7 +565,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_not(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_not(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => if *i != 0 {
@@ -584,7 +584,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     let else_label = format!(".else{}", self.local_label_counter_if);
                     self.generate_condition(expr, pos, false, &else_label, false)?;
                     self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
-                    self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                    self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
                     self.label(&else_label)?;
                     self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
                     self.label(&ifend_label)?;
@@ -600,7 +600,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         Ok(ExprType::Immediate(if b {0} else {1}))
                     } else {
                         self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
-                        self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                        self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
                         self.label(&else_label)?;
                         self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
                         self.label(&ifend_label)?;
@@ -612,7 +612,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_bnot(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_bnot(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Integer(i) => Ok(ExprType::Immediate(!*i)),
@@ -624,7 +624,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_sign_extend(&mut self, expr: ExprType<'a>, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_sign_extend(&mut self, expr: ExprType, pos: usize) -> Result<ExprType, Error>
     {
         if self.acc_in_use { self.sasm(PHA)?; }
         #[cfg(constant_time)]
@@ -643,7 +643,7 @@ impl<'a, 'b> GeneratorState<'a> {
             self.local_label_counter_if += 1;
             let ifneg_label = format!(".ifneg{}", self.local_label_counter_if);
             self.asm(ORA, &ExprType::Immediate(0x7F), pos, false)?;
-            self.asm(BMI, &ExprType::Label(&ifneg_label), 0, false)?;
+            self.asm(BMI, &ExprType::Label(ifneg_label.clone()), 0, false)?;
             self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
             self.label(&ifneg_label)?;
         }

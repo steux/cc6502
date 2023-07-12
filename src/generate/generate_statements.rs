@@ -26,7 +26,7 @@ use crate::assemble::AsmMnemonic::*;
 
 use super::{GeneratorState, ExprType, FlagsState};
 
-impl<'a, 'b> GeneratorState<'a> {
+impl<'a> GeneratorState<'a> {
 
     fn purge_deferred_plusplus_and_savey(&mut self) -> Result<(), Error> {
         if self.saved_y {
@@ -75,7 +75,7 @@ impl<'a, 'b> GeneratorState<'a> {
         None
     }
 
-    fn generate_function_call(&mut self, expr: &Expr, params: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_function_call(&mut self, expr: &Expr, params: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Identifier(var, sub) => {
@@ -90,6 +90,54 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.sasm(PHA)?;
                                 }
 
+                                // TODO: Push all necessary local variables onto stack
+                                let mut nb_local_variables_to_push = 0;
+
+                                // Load parameters
+                                {
+                                    let mut p = params.clone();
+                                    let mut param_iter = f.parameters.iter();
+                                    loop {
+                                        let param: &Expr;
+                                        let next: Option<&Expr>;
+                                        if let Expr::BinOp {lhs, op, rhs} = &p {
+                                            if *op == Operation::Comma {
+                                                param = &*lhs;
+                                                next = Some(&*rhs);
+                                            } else {
+                                                param = &p;
+                                                next = None;
+                                            }
+                                        } else {
+                                            param = &p;
+                                            next = None;
+                                        }
+                                        if let Expr::Nothing = *param {
+                                            break;
+                                        }
+                                        // Well, there is ACTUALLY a parameter provided
+                                        // Let's see what is the requested parameter
+                                        if let Some(requested_param) = param_iter.next() {
+                                            let s = format!("{var}_{requested_param}");
+                                            let ex = Expr::BinOp {
+                                                lhs: Box::new(Expr::Identifier(s, Box::new(Expr::Nothing))),
+                                                op: Operation::Assign,
+                                                rhs: Box::new(param.clone())
+                                            };
+                                            debug!("Parameter: {:?}", ex);
+                                            self.generate_expr(&ex, pos, false, false)?;
+                                        } else {
+                                            return Err(self.compiler_state.syntax_error("Too many parameters provided in function call", pos))
+                                        }
+                                        if let Some(x) = next {
+                                            p = x.clone(); 
+                                        } else { break }
+                                    }
+                                    if let Some(_) = param_iter.next() {
+                                        return Err(self.compiler_state.syntax_error("Not enough parameters provided in function call", pos))
+                                    }
+                                }
+
                                 if f.interrupt {
                                     return Err(self.compiler_state.syntax_error("Can't call an interrupt routine", pos))
                                 }
@@ -100,13 +148,13 @@ impl<'a, 'b> GeneratorState<'a> {
                                         return Err(self.compiler_state.syntax_error("Undefined function", pos));
                                     }
                                 } else if f.bank == self.current_bank || self.bankswitching_scheme == "3EP" {
-                                    self.asm(JSR, &ExprType::Label(var), pos, false)?;
+                                    self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                 } else if self.bankswitching_scheme == "3E" {
                                     if self.current_bank == 0 {
                                         // Generate bankswitching call
                                         self.asm(LDA, &ExprType::Immediate((f.bank - 1) as i32), pos, false)?;
-                                        self.asm(STA, &ExprType::Absolute("ROM_SELECT", true, 0), pos, false)?;
-                                        self.asm(JSR, &ExprType::Label(var), pos, false)?;
+                                        self.asm(STA, &ExprType::Absolute("ROM_SELECT".into(), true, 0), pos, false)?;
+                                        self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                     } else {
                                         return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
                                     }
@@ -114,10 +162,10 @@ impl<'a, 'b> GeneratorState<'a> {
                                     // Generate bankswitching call
                                     if self.bankswitching_scheme == "SuperGame" {
                                         self.asm(LDA, &ExprType::Immediate((f.bank - 1) as i32), pos, false)?;
-                                        self.asm(STA, &ExprType::Absolute("ROM_SELECT", true, 0), pos, false)?;
-                                        self.asm(JSR, &ExprType::Label(var), pos, false)?;
+                                        self.asm(STA, &ExprType::Absolute("ROM_SELECT".into(), true, 0), pos, false)?;
+                                        self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                     } else {
-                                        self.asm(JSR, &ExprType::Label(&format!("Call{}", *var)), pos, false)?;
+                                        self.asm(JSR, &ExprType::Label(format!("Call{}", *var)), pos, false)?;
                                     }
                                 } else {
                                     return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos))
@@ -137,6 +185,7 @@ impl<'a, 'b> GeneratorState<'a> {
 
                                 self.flags = FlagsState::Unknown;
                                 // Manage return value
+                                let mut return_tmp = false;
                                 if f.return_type.is_some() {
                                     if self.tmp_in_use {
                                         return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
@@ -145,12 +194,19 @@ impl<'a, 'b> GeneratorState<'a> {
                                         self.asm(STA, &ExprType::Tmp(f.return_signed), pos, false)?; 
                                         self.sasm(PLA)?; 
                                         self.tmp_in_use = true;
-                                        return Ok(ExprType::Tmp(f.return_signed));
-                                    } else {
-                                        return Ok(ExprType::A(f.return_signed));
+                                        return_tmp = true; 
                                     }
                                 }
 
+                                // TODO: Pop local variables from stack
+
+                                if f.return_type.is_some() {
+                                    return if return_tmp {
+                                        Ok(ExprType::Tmp(f.return_signed))
+                                    } else {
+                                        Ok(ExprType::A(f.return_signed))
+                                    };
+                                }
                                 if self.tmp_in_use { 
                                     self.sasm(PLA)?;
                                     self.asm(STA, &ExprType::Tmp(false), pos, false)?; 
@@ -169,7 +225,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_deref(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_deref(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Identifier(var, sub) => {
@@ -178,7 +234,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     let sub_output = self.generate_expr(sub, pos, false, false)?;
                     match sub_output {
                         ExprType::Nothing => {
-                            Ok(ExprType::Absolute(var, true, 0))
+                            Ok(ExprType::Absolute(var.clone(), true, 0))
                         },
                         _ => Err(self.compiler_state.syntax_error("No subscript is allowed in this context", pos))
                     }
@@ -190,7 +246,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    fn generate_sizeof(&mut self, expr: &Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    fn generate_sizeof(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
             Expr::Identifier(var, _) => {
@@ -214,7 +270,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_expr(&mut self, expr: &'a Expr, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_expr(&mut self, expr: &Expr, pos: usize, high_byte: bool, second_time: bool) -> Result<ExprType, Error>
     {
         debug!("Expression: {:?}, high_byte: {}", expr, high_byte);
         match expr {
@@ -238,7 +294,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.generate_assign(&left, &right, pos, true)?;
                                 },
                                 ExprType::AbsoluteX(variable) | ExprType::AbsoluteY(variable) => {
-                                    let v = self.compiler_state.get_variable(variable);
+                                    let v = self.compiler_state.get_variable(&variable);
                                     if v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtrPtr {
                                         let left = self.generate_expr(lhs, pos, true, true)?;
                                         let right = self.generate_expr(rhs, pos, true, true)?;
@@ -263,7 +319,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         if !high_byte {
                             match left {
                                 ExprType::Absolute(variable, eight_bits, _) => {
-                                    let v = self.compiler_state.get_variable(variable);
+                                    let v = self.compiler_state.get_variable(&variable);
                                     if v.var_type == VariableType::Short || v.var_type == VariableType::ShortPtr || (v.var_type == VariableType::CharPtr && !eight_bits) {
                                         let left = self.generate_expr(lhs, pos, true, true)?;
                                         let right = self.generate_expr(rhs, pos, true, true)?;
@@ -272,7 +328,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     }
                                 },
                                 ExprType::AbsoluteX(variable) | ExprType::AbsoluteY(variable) => {
-                                    let v = self.compiler_state.get_variable(variable);
+                                    let v = self.compiler_state.get_variable(&variable);
                                     if v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtrPtr {
                                         let left = self.generate_expr(lhs, pos, true, true)?;
                                         let right = self.generate_expr(rhs, pos, true, true)?;
@@ -324,34 +380,34 @@ impl<'a, 'b> GeneratorState<'a> {
                                 Ok(ExprType::Immediate(*val))
                             } else {
                                 if high_byte && v.var_type == VariableType::Char && v.signed {
-                                    self.generate_sign_extend(ExprType::Absolute(variable, v.var_type == VariableType::Char, 0), pos)
+                                    self.generate_sign_extend(ExprType::Absolute(variable.into(), v.var_type == VariableType::Char, 0), pos)
                                 } else {
-                                    Ok(ExprType::Absolute(variable, v.var_type == VariableType::Char, 0))
+                                    Ok(ExprType::Absolute(variable.into(), v.var_type == VariableType::Char, 0))
                                 }
                             },
                             ExprType::X => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
-                                    self.generate_sign_extend(ExprType::AbsoluteX(variable), pos)
+                                    self.generate_sign_extend(ExprType::AbsoluteX(variable.into()), pos)
                                 } else {
-                                    Ok(ExprType::AbsoluteX(variable))
+                                    Ok(ExprType::AbsoluteX(variable.into()))
                                 }
                             } else {
                                 Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
                             ExprType::Y => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
-                                    self.generate_sign_extend(ExprType::AbsoluteY(variable), pos)
+                                    self.generate_sign_extend(ExprType::AbsoluteY(variable.into()), pos)
                                 } else {
-                                    Ok(ExprType::AbsoluteY(variable))
+                                    Ok(ExprType::AbsoluteY(variable.into()))
                                 }
                             } else {
                                 Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
                             ExprType::Immediate(val) => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
-                                    self.generate_sign_extend(ExprType::Absolute(variable, true, val), pos)
+                                    self.generate_sign_extend(ExprType::Absolute(variable.into(), true, val), pos)
                                 } else {
-                                    Ok(ExprType::Absolute(variable, v.var_type != VariableType::CharPtrPtr && v.var_type != VariableType::ShortPtr, val))
+                                    Ok(ExprType::Absolute(variable.into(), v.var_type != VariableType::CharPtrPtr && v.var_type != VariableType::ShortPtr, val))
                                 }
                             } else {
                                 if tmp_in_use || self.tmp_in_use || self.saved_y {
@@ -361,7 +417,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
                                     self.saved_y = true;
-                                    Ok(ExprType::AbsoluteY(variable))
+                                    Ok(ExprType::AbsoluteY(variable.into()))
                                 } else {
                                     Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
@@ -374,7 +430,7 @@ impl<'a, 'b> GeneratorState<'a> {
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
                                     self.saved_y = true;
-                                    Ok(ExprType::AbsoluteY(variable))
+                                    Ok(ExprType::AbsoluteY(variable.into()))
                                 } else {
                                     Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 }
@@ -404,14 +460,14 @@ impl<'a, 'b> GeneratorState<'a> {
             Expr::MinusMinus(expr, true) => {
                 let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
                 if !second_time {
-                    self.deferred_plusplus.push((expr_type, pos, false));
+                    self.deferred_plusplus.push((expr_type.clone(), pos, false));
                 }
                 Ok(expr_type)
             },
             Expr::PlusPlus(expr, true) => {
                 let expr_type = self.generate_expr(expr, pos, high_byte, high_byte)?;
                 if !second_time {
-                    self.deferred_plusplus.push((expr_type, pos, true));
+                    self.deferred_plusplus.push((expr_type.clone(), pos, true));
                 }
                 Ok(expr_type)
             },
@@ -421,11 +477,11 @@ impl<'a, 'b> GeneratorState<'a> {
             Expr::Deref(v) => self.generate_deref(v, pos),
             Expr::Sizeof(v) => self.generate_sizeof(v, pos),
             Expr::Nothing => Ok(ExprType::Nothing),
-            Expr::TmpId(s) => Ok(ExprType::Absolute(s, false, 0)),
+            Expr::TmpId(s) => Ok(ExprType::Absolute(s.clone(), false, 0)),
         }
     }
     
-    fn generate_for_loop(&mut self, init: &'a Expr, condition: &'a Expr, update: &'a Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
+    fn generate_for_loop(&mut self, init: &'a Expr, condition: &Expr, update: &'a Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
     {
         self.local_label_counter_for += 1;
         let for_label = format!(".for{}", self.local_label_counter_for);
@@ -446,7 +502,7 @@ impl<'a, 'b> GeneratorState<'a> {
         Ok(())
     }
 
-    fn generate_while(&mut self, condition: &'a Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
+    fn generate_while(&mut self, condition: &Expr, body: &'a StatementLoc<'a>, pos: usize) -> Result<(), Error>
     {
         if let Statement::Expression(Expr::Nothing) = body.statement {
             self.generate_do_while(body, condition, pos)
@@ -458,14 +514,14 @@ impl<'a, 'b> GeneratorState<'a> {
             self.label(&while_label)?;
             self.generate_condition(condition, pos, true, &whileend_label, false)?;
             self.generate_statement(body)?;
-            self.asm(JMP, &ExprType::Label(&while_label), pos, false)?;
+            self.asm(JMP, &ExprType::Label(while_label), pos, false)?;
             self.label(&whileend_label)?;
             self.loops.pop();
             Ok(())
         }
     }
 
-    fn generate_do_while(&mut self, body: &'a StatementLoc<'a>, condition: &'a Expr, pos: usize) -> Result<(), Error>
+    fn generate_do_while(&mut self, body: &'a StatementLoc<'a>, condition: &Expr, pos: usize) -> Result<(), Error>
     {
         self.local_label_counter_while += 1;
         let dowhile_label = format!(".dowhile{}", self.local_label_counter_while);
@@ -492,7 +548,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 Some((_, bl, _)) => bl.clone(),
             };
         }
-        self.asm(JMP, &ExprType::Label(&brk_label), pos, false)?;
+        self.asm(JMP, &ExprType::Label(brk_label), pos, false)?;
         Ok(())
     }
 
@@ -504,12 +560,12 @@ impl<'a, 'b> GeneratorState<'a> {
                 return Err(self.compiler_state.syntax_error("Continue statement outside loop", pos));
             } else { cl.clone() }
         };
-        self.asm(JMP, &ExprType::Label(&cont_label), pos, false)?;
+        self.asm(JMP, &ExprType::Label(cont_label), pos, false)?;
         self.loops.last_mut().unwrap().2 = true;
         Ok(())
     }
 
-    pub fn generate_return(&mut self, expr: &'a Expr, pos: usize) -> Result<(), Error>
+    pub fn generate_return(&mut self, expr: &Expr, pos: usize) -> Result<(), Error>
     {
         if let Some(s) = &self.current_function {
             let f = self.compiler_state.functions.get(s).unwrap(); 
@@ -547,7 +603,7 @@ impl<'a, 'b> GeneratorState<'a> {
 
     fn generate_goto_statement(&mut self, s: &'a str ) -> Result<(), Error>
     {
-        self.asm(JMP, &ExprType::Label(&format!(".{}", s)), 0, false)?;
+        self.asm(JMP, &ExprType::Label(format!(".{}", s)), 0, false)?;
         Ok(())
     }
 
@@ -558,7 +614,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 let v = self.compiler_state.get_variable(name);
                 match v.var_type {
                     VariableType::CharPtr => {
-                        self.asm(STA, &ExprType::Absolute(name, true, 0), pos, false)?;
+                        self.asm(STA, &ExprType::Absolute(name.clone(), true, 0), pos, false)?;
                         Ok(())
                     },
                     _ => Err(self.compiler_state.syntax_error("Strobe only works on memory pointers", pos)),
@@ -572,12 +628,12 @@ impl<'a, 'b> GeneratorState<'a> {
     {
         match cycles {
             2 => self.sasm(NOP)?,
-            3 => self.asm(STA, &ExprType::Absolute("DUMMY", true, 0), pos, false)?,
+            3 => self.asm(STA, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?,
             4 => {
                 self.sasm(NOP)?;
                 self.sasm(NOP)?
             },
-            5 => self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?,
+            5 => self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?,
             6 => {
                 self.sasm(NOP)?;
                 self.sasm(NOP)?;
@@ -594,13 +650,13 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.sasm(NOP)?
             },
             9 => {
-                self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?;
+                self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?;
                 self.sasm(NOP)?;
                 self.sasm(NOP)?
             },
             10 => {
-                self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?;
-                self.asm(DEC, &ExprType::Absolute("DUMMY", true, 0), pos, false)?
+                self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?;
+                self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?
             },
             _ => return Err(self.compiler_state.syntax_error("Unsupported cycle sleep value", pos))
         };
@@ -608,7 +664,7 @@ impl<'a, 'b> GeneratorState<'a> {
     }
 
     // Load/Store statements are protected, and thus cannot be optmized out
-    fn generate_load_store_statement(&mut self, expr: &ExprType<'a>, pos: usize, load: bool) -> Result<(), Error>
+    fn generate_load_store_statement(&mut self, expr: &ExprType, pos: usize, load: bool) -> Result<(), Error>
     {
         self.protected = true;
         match expr {

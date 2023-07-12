@@ -24,9 +24,9 @@ use crate::assemble::AsmMnemonic::*;
 
 use super::{GeneratorState, ExprType, FlagsState};
 
-impl<'a, 'b> GeneratorState<'a> {
+impl<'a> GeneratorState<'a> {
 
-    pub fn generate_assign(&mut self, left: &ExprType<'a>, right: &ExprType<'a>, pos: usize, high_byte: bool) -> Result<ExprType<'a>, Error>
+    pub fn generate_assign(&mut self, left: &ExprType, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         match left {
             ExprType::X => {
@@ -332,15 +332,15 @@ impl<'a, 'b> GeneratorState<'a> {
                         match left {
                             ExprType::Absolute(a, b, c) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::Absolute(a, *b, *c) }
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::Absolute(a.clone(), *b, *c) }
                             },
                             ExprType::AbsoluteX(s) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteX(s) }
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteX(s.clone()) }
                             },
                             ExprType::AbsoluteY(s) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteY(s) }
+                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteY(s.clone()) }
                             },
                             ExprType::A(_) => {
                                 if acc_in_use {
@@ -365,7 +365,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             self.flags = FlagsState::Unknown;
                             self.carry_flag_ok = false;
                         }
-                        Ok(*left)
+                        Ok(left.clone())
                     }
                 }
             }

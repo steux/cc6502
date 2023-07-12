@@ -26,25 +26,25 @@ use crate::compile::*;
 
 use crate::assemble::AssemblyCode;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ExprType<'a> {
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExprType {
     Nothing,
     Immediate(i32),
     Tmp(bool),
-    Absolute(&'a str, bool, i32), // variable, eight_bits, offset
-    AbsoluteX(&'a str),
-    AbsoluteY(&'a str),
+    Absolute(String, bool, i32), // variable, eight_bits, offset
+    AbsoluteX(String),
+    AbsoluteY(String),
     A(bool), X, Y,
-    Label(&'a str),
+    Label(String),
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum FlagsState<'a> {
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) enum FlagsState {
     Unknown,
     A, X, Y,
-    Absolute(&'a str, bool, i32),
-    AbsoluteX(&'a str),
-    AbsoluteY(&'a str),
+    Absolute(String, bool, i32),
+    AbsoluteX(String),
+    AbsoluteY(String),
 }
 
 pub struct GeneratorState<'a> {
@@ -58,13 +58,13 @@ pub struct GeneratorState<'a> {
     local_label_counter_while: u32,
     inline_label_counter: u32,
     loops: Vec<(String,String,bool)>,
-    flags: FlagsState<'a>,
+    flags: FlagsState,
     carry_flag_ok: bool,
     acc_in_use: bool,
     tmp_in_use: bool,
     insert_code: bool,
     whitespaces_regex: Regex,
-    deferred_plusplus: Vec<(ExprType<'a>, usize, bool)>,
+    deferred_plusplus: Vec<(ExprType, usize, bool)>,
     pub current_bank: u32,
     pub functions_code: HashMap<String, AssemblyCode>,
     pub functions_call_tree: HashMap<String, Vec<String>>,

@@ -29,7 +29,7 @@ use crate::assemble::{AssemblyCode, AsmMnemonic, AsmMnemonic::*, AsmInstruction}
 
 use super::{GeneratorState, ExprType, FlagsState};
 
-impl<'a, 'b> GeneratorState<'a> {
+impl<'a> GeneratorState<'a> {
     pub fn new(compiler_state: &'a CompilerState, writer: &'a mut dyn Write, insert_code: bool, bankswitching_scheme: &'a str) -> GeneratorState<'a> {
         GeneratorState {
             compiler_state,
@@ -57,7 +57,7 @@ impl<'a, 'b> GeneratorState<'a> {
             bankswitching_scheme,
             protected: false,
             carry_propagation_error: false,
-            saved_y: false
+            saved_y: false,
         }
     }
     
@@ -74,7 +74,7 @@ impl<'a, 'b> GeneratorState<'a> {
         ret
     }
 
-    pub fn asm(&mut self, mnemonic: AsmMnemonic, operand: &ExprType<'b>, pos: usize, high_byte: bool) -> Result<bool, Error>
+    pub fn asm(&mut self, mnemonic: AsmMnemonic, operand: &ExprType, pos: usize, high_byte: bool) -> Result<bool, Error>
     {
         let dasm_operand: String;
         let signed;

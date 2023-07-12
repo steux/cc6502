@@ -27,7 +27,7 @@ use crate::assemble::AsmMnemonic::*;
 use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a, 'b> GeneratorState<'a> {
-    pub fn generate_ternary(&mut self, condition: &'a Expr, alternatives: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_ternary(&mut self, condition: &Expr, alternatives: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match alternatives {
             Expr::BinOp {lhs, op, rhs} => {
@@ -43,7 +43,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         self.generate_condition(condition, pos, true, &else_label, false)?;
                         let left = self.generate_expr(lhs, pos, false, false)?;
                         let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
-                        self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                        self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
                         self.label(&else_label)?;
                         self.acc_in_use = false;
                         let right = self.generate_expr(rhs, pos, false, false)?;
@@ -70,7 +70,7 @@ impl<'a, 'b> GeneratorState<'a> {
                         } else {
                             let left = self.generate_expr(lhs, pos, false, false)?;
                             let la = self.generate_assign(&ExprType::A(false), &left, pos, false)?;
-                            self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                            self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
                             self.label(&else_label)?;
                             self.acc_in_use = false;
                             let right = self.generate_expr(rhs, pos, false, false)?;
@@ -91,7 +91,7 @@ impl<'a, 'b> GeneratorState<'a> {
         }
     }
 
-    pub fn generate_expr_cond(&mut self, expr: &'a Expr, pos: usize) -> Result<ExprType<'a>, Error>
+    pub fn generate_expr_cond(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         if self.acc_in_use {
             self.sasm(PHA)?; 
@@ -103,7 +103,7 @@ impl<'a, 'b> GeneratorState<'a> {
             let else_label = format!(".else{}", self.local_label_counter_if);
             self.generate_condition(expr, pos, false, &else_label, false)?;
             self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
-            self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+            self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
             self.label(&else_label)?;
             self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
             self.label(&ifend_label)?;
@@ -120,7 +120,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 Ok(ExprType::Immediate(if b {1} else {0}))
             } else {
                 self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
-                self.asm(JMP, &ExprType::Label(&ifend_label), pos, false)?;
+                self.asm(JMP, &ExprType::Label(ifend_label.clone()), pos, false)?;
                 self.label(&else_label)?;
                 self.asm(LDA, &ExprType::Immediate(1), pos, false)?;
                 self.label(&ifend_label)?;
@@ -135,47 +135,47 @@ impl<'a, 'b> GeneratorState<'a> {
         // Branch instruction
         match op {
             Operation::Neq => {
-                self.asm(BNE, &ExprType::Label(label), 0, false)?;
+                self.asm(BNE, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Eq => {
-                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Lt => {
                 if signed {
-                    self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                    self.asm(BMI, &ExprType::Label(label.into()), 0, false)?;
                 } else {
-                    self.asm(BCC, &ExprType::Label(label), 0, false)?;
+                    self.asm(BCC, &ExprType::Label(label.into()), 0, false)?;
                 } 
                 Ok(())
             },
             Operation::Gt => {
                 self.local_label_counter_if += 1;
                 let label_here = format!(".ifhere{}", self.local_label_counter_if);
-                self.asm(BEQ, &ExprType::Label(&label_here), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label_here.clone()), 0, false)?;
                 if signed {
-                    self.asm(BPL, &ExprType::Label(label), 0, false)?;
+                    self.asm(BPL, &ExprType::Label(label.into()), 0, false)?;
                 } else {
-                    self.asm(BCS, &ExprType::Label(label), 0, false)?;
+                    self.asm(BCS, &ExprType::Label(label.into()), 0, false)?;
                 }
                 self.label(&label_here)?;
                 Ok(())
             },
             Operation::Lte => {
                 if signed {
-                    self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                    self.asm(BMI, &ExprType::Label(label.into()), 0, false)?;
                 } else {
-                    self.asm(BCC, &ExprType::Label(label), 0, false)?;
+                    self.asm(BCC, &ExprType::Label(label.into()), 0, false)?;
                 } 
-                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Gte => {
                 if signed {
-                    self.asm(BPL, &ExprType::Label(label), 0, false)?;
+                    self.asm(BPL, &ExprType::Label(label.into()), 0, false)?;
                 } else {
-                    self.asm(BCS, &ExprType::Label(label), 0, false)?;
+                    self.asm(BCS, &ExprType::Label(label.into()), 0, false)?;
                 } 
                 Ok(())
             },
@@ -190,43 +190,43 @@ impl<'a, 'b> GeneratorState<'a> {
         // Branch instruction
         match op {
             Operation::Neq => {
-                self.asm(BNE, &ExprType::Label(label), 0, false)?;
+                self.asm(BNE, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Eq => {
-                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Lt => {
-                self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                self.asm(BMI, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Gt => {
                 self.local_label_counter_if += 1;
                 let label_here = format!(".ifhere{}", self.local_label_counter_if);
-                self.asm(BEQ, &ExprType::Label(&label_here), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label_here.clone()), 0, false)?;
                 if signed {
-                    self.asm(BPL, &ExprType::Label(label), 0, false)?;
+                    self.asm(BPL, &ExprType::Label(label.into()), 0, false)?;
                 }
                 self.label(&label_here)?;
                 Ok(())
             },
             Operation::Lte => {
                 if signed {
-                    self.asm(BMI, &ExprType::Label(label), 0, false)?;
+                    self.asm(BMI, &ExprType::Label(label.into()), 0, false)?;
                 }
-                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             Operation::Gte => {
-                self.asm(BPL, &ExprType::Label(label), 0, false)?;
+                self.asm(BPL, &ExprType::Label(label.into()), 0, false)?;
                 Ok(())
             },
             _ => Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
         }
     }
 
-    fn generate_condition_16bits(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>, pos: usize, label: &str) -> Result<(), Error>
+    fn generate_condition_16bits(&mut self, l: &ExprType, op: &Operation, r: &ExprType, pos: usize, label: &str) -> Result<(), Error>
     {
         let mut f = ExprType::Nothing;
         let compute_subtraction = if let ExprType::Immediate(v) = r {
@@ -282,7 +282,7 @@ impl<'a, 'b> GeneratorState<'a> {
         res
     }
     
-    fn generate_condition_ex(&mut self, l: &ExprType<'a>, op: &Operation, r: &ExprType<'a>, pos: usize, negate: bool, label: &str) -> Result<(), Error>
+    fn generate_condition_ex(&mut self, l: &ExprType, op: &Operation, r: &ExprType, pos: usize, negate: bool, label: &str) -> Result<(), Error>
     {
         let left;
         let right;
@@ -334,7 +334,7 @@ impl<'a, 'b> GeneratorState<'a> {
                 if flags_ok(&self.flags, left) {
                     match operator {
                         Operation::Neq => {
-                            self.asm(BNE, &ExprType::Label(label), pos, false)?;
+                            self.asm(BNE, &ExprType::Label(label.into()), pos, false)?;
                             match left {
                                 ExprType::A(_) => self.acc_in_use = false,
                                 ExprType::Tmp(_) => self.tmp_in_use = false,
@@ -343,7 +343,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             return Ok(());
                         },
                         Operation::Eq => {
-                            self.asm(BEQ, &ExprType::Label(label), pos, false)?;
+                            self.asm(BEQ, &ExprType::Label(label.into()), pos, false)?;
                             match left {
                                 ExprType::A(_) => self.acc_in_use = false,
                                 ExprType::Tmp(_) => self.tmp_in_use = false,
@@ -355,7 +355,7 @@ impl<'a, 'b> GeneratorState<'a> {
                             // Special case : deterministic condition
                             if let ExprType::Immediate(v) = left {
                                 if (operator == Operation::Neq && *v != 0) || (operator == Operation::Eq && *v == 0) {
-                                    self.asm(JMP, &ExprType::Label(label), pos, false)?;
+                                    self.asm(JMP, &ExprType::Label(label.into()), pos, false)?;
                                 }
                                 return Ok(());
                             }
@@ -398,19 +398,19 @@ impl<'a, 'b> GeneratorState<'a> {
                 }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
-                self.flags = FlagsState::Absolute(a, *eight_bits, *b);
+                self.flags = FlagsState::Absolute((*a).clone(), *eight_bits, *b);
             },
             ExprType::AbsoluteX(s) => {
                 if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
-                self.flags = FlagsState::AbsoluteX(s);
+                self.flags = FlagsState::AbsoluteX((*s).clone());
             },
             ExprType::AbsoluteY(s) => {
                 if self.acc_in_use { return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos)); }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
-                self.flags = FlagsState::AbsoluteY(s);
+                self.flags = FlagsState::AbsoluteY((*s).clone());
             },
             ExprType::A(sign) => {
                 cmp = true;
@@ -541,7 +541,7 @@ impl<'a, 'b> GeneratorState<'a> {
         self.generate_branch_instruction(&operator, signed, label)
     }
 
-    pub fn generate_condition(&mut self, condition: &'a Expr, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
+    pub fn generate_condition(&mut self, condition: &Expr, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
     {
         //debug!("Condition: {:?}", condition);
         match condition {
@@ -636,24 +636,24 @@ impl<'a, 'b> GeneratorState<'a> {
                 self.tmp_in_use = false;
             }
             if negate {
-                self.asm(BEQ, &ExprType::Label(label), pos, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), pos, false)?;
             } else {
-                self.asm(BNE, &ExprType::Label(label), pos, false)?;
+                self.asm(BNE, &ExprType::Label(label.into()), pos, false)?;
             }
             Ok(None)
         } else {
             self.flags = FlagsState::Unknown;
-            match expr {
+            match &expr {
                 ExprType::Immediate(v) => {
                     if immediate_special {
-                        return Ok(Some(if v != 0 { !negate } else { negate }));
+                        return Ok(Some(if *v != 0 { !negate } else { negate }));
                     }
-                    if v != 0 {
+                    if *v != 0 {
                         if !negate {
-                            self.asm(JMP, &ExprType::Label(label), pos, false)?;
+                            self.asm(JMP, &ExprType::Label(label.into()), pos, false)?;
                         }
                     } else if negate {
-                        self.asm(JMP, &ExprType::Label(label), pos, false)?;
+                        self.asm(JMP, &ExprType::Label(label.into()), pos, false)?;
                     }
                     self.flags = FlagsState::Unknown;
                     return Ok(None);
@@ -665,17 +665,17 @@ impl<'a, 'b> GeneratorState<'a> {
                         return Ok(None);
                     }
                     self.asm(LDA, &expr, pos, false)?;
-                    self.flags = FlagsState::Absolute(a, eight_bits, b);
+                    self.flags = FlagsState::Absolute(a.clone(), *eight_bits, *b);
                 },
                 ExprType::AbsoluteX(s) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     self.asm(LDA, &expr, pos, false)?;
-                    self.flags = FlagsState::AbsoluteX(s);
+                    self.flags = FlagsState::AbsoluteX(s.clone());
                 },
                 ExprType::AbsoluteY(s) => {
                     if self.acc_in_use { self.sasm(PHA)?; }
                     self.asm(LDA, &expr, pos, false)?;
-                    self.flags = FlagsState::AbsoluteY(s);
+                    self.flags = FlagsState::AbsoluteY(s.clone());
                 },
                 ExprType::A(_) => {
                     self.acc_in_use = false;
@@ -697,9 +697,9 @@ impl<'a, 'b> GeneratorState<'a> {
             }
 
             if negate {
-                self.asm(BEQ, &ExprType::Label(label), 0, false)?;
+                self.asm(BEQ, &ExprType::Label(label.into()), 0, false)?;
             } else {
-                self.asm(BNE, &ExprType::Label(label), 0, false)?;
+                self.asm(BNE, &ExprType::Label(label.into()), 0, false)?;
             }
             Ok(None)
         }
@@ -742,9 +742,9 @@ impl<'a, 'b> GeneratorState<'a> {
             Some(else_statement) => {
                 let else_label = format!(".else{}", self.local_label_counter_if);
                 self.generate_condition(condition, pos, true, &else_label, false)?;
-                let saved_flags = self.flags;
+                let saved_flags = self.flags.clone();
                 self.generate_statement(body)?;
-                self.asm(JMP, &ExprType::Label(&ifend_label), 0, false)?;
+                self.asm(JMP, &ExprType::Label(ifend_label.clone()), 0, false)?;
                 self.label(&else_label)?;
                 self.flags = saved_flags;
                 self.generate_statement(else_statement)?;
@@ -780,7 +780,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     for i in &case.0 {
                         self.generate_condition_ex(&e, &Operation::Eq, &ExprType::Immediate(*i), pos, false, &switchnextstatement_label)?;
                     }
-                    self.asm(JMP, &ExprType::Label(&switchnextcase_label), 0, false)?;
+                    self.asm(JMP, &ExprType::Label(switchnextcase_label.clone()), 0, false)?;
                     jmp_to_next_case = true;
                 }
             }
@@ -792,7 +792,7 @@ impl<'a, 'b> GeneratorState<'a> {
             switchnextstatement_label = format!(".switchnextstatement{}", self.local_label_counter_if);
             // If this is not the last case...
             if !is_last_element {
-                self.asm(JMP, &ExprType::Label(&switchnextstatement_label), 0, false)?;
+                self.asm(JMP, &ExprType::Label(switchnextstatement_label.clone()), 0, false)?;
             }
             if jmp_to_next_case {
                 self.label(&switchnextcase_label)?;
@@ -810,9 +810,9 @@ fn flags_ok(flags: &FlagsState, expr_type: &ExprType) -> bool
         FlagsState::X => *expr_type == ExprType::X,
         FlagsState::Y => *expr_type == ExprType::Y,
         FlagsState::A => if let ExprType::A(_) = *expr_type { true } else { false },
-        FlagsState::AbsoluteX(s) => *expr_type == ExprType::AbsoluteX(s),
-        FlagsState::AbsoluteY(s) => *expr_type == ExprType::AbsoluteY(s),
-        FlagsState::Absolute(var, eight_bits, offset) => *expr_type == ExprType::Absolute(var, *eight_bits, *offset),
+        FlagsState::AbsoluteX(s) => *expr_type == ExprType::AbsoluteX(s.clone()),
+        FlagsState::AbsoluteY(s) => *expr_type == ExprType::AbsoluteY(s.clone()),
+        FlagsState::Absolute(var, eight_bits, offset) => *expr_type == ExprType::Absolute(var.clone(), *eight_bits, *offset),
         _ => false
     }
 }

@@ -1329,12 +1329,25 @@ char i; void main() { i = one; }";
     #[test]
     fn params_test1() {
         let args = sargs(1);
-        let input = "void f(char x, int y) { x = y; }; void main() { f(); }";
+        let input = "void f(char x, int y) { x = y; }; void main() { f(1, 2); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
         assert!(result.contains("f\tSUBROUTINE\n\tLDA f_y\n\tSTA f_x\n\tRTS"));
+        assert!(result.contains("main\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tRTS"));
+    }
+    
+    #[test]
+    fn params_test2() {
+        let args = sargs(1);
+        let input = "char f(char x, int y) { return x + y; }; void main() { X = f(1, 2); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
+        assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tTAX\n\tRTS"));
     }
 }
