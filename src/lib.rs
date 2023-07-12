@@ -28,8 +28,8 @@
 // DONE: Detect 16 bits aithm bad carry propagation
 // DONE: Implement function return in Acc
 // DONE: Add nbbytes param to asm statement
-// TODO: Add local variables stack storage code
-// TODO: Add functions params support
+// DONE: Add local variables stack storage code
+// DONE: Add functions params support
 
 mod cpp;
 pub mod error;
@@ -1349,5 +1349,17 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
         assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tTAX\n\tRTS"));
+    }
+    
+    #[test]
+    fn params_test3() {
+        let args = sargs(1);
+        let input = "char f(char x, char y) { return x + y; }; void main() { char x, y; x = X; y = f(1, 2); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_x               \tds 1\nmain_1_y               \tds 1"));
+        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_x\n\tLDA LOCAL_VARIABLES+0\n\tPHA\n\tLDA LOCAL_VARIABLES+1\n\tPHA\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA cctmp\n\tPLA\n\tSTA LOCAL_VARIABLES+1\n\tPLA\n\tSTA LOCAL_VARIABLES+0\n\tLDA cctmp\n\tSTA main_1_y\n\tRTS"));
     }
 }

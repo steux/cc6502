@@ -188,7 +188,8 @@ pub struct Function<'a> {
     pub(crate) return_type: Option<VariableType>,
     pub code: Option<StatementLoc<'a>>,
     pub local_variables: Vec<String>,
-    pub(crate) parameters: Vec<String>
+    pub(crate) parameters: Vec<String>,
+    pub(crate) stack_frame_size: usize,
 }
 
 pub struct CompilerState<'a> {
@@ -1406,12 +1407,37 @@ impl<'a> CompilerState<'a> {
                         return_signed,
                         return_type,
                         local_variables,
-                        parameters
+                        parameters,
+                        stack_frame_size: 0,
                     });
                     let code = self.compile_block(pair)?;
                     let f = self.functions.get_mut(&self.current_function).unwrap();
                     f.code = Some(code);
                     self.in_scope_variables.clear();
+                    // Compute stack frame size
+                    f.stack_frame_size = 0;
+                    for vx in &f.local_variables {
+                        if let Some(v) = self.variables.get(vx) {
+                            f.stack_frame_size += if v.size > 1 {
+                                let s = match v.var_type {
+                                    VariableType::CharPtr => 1,
+                                    VariableType::CharPtrPtr => 2,
+                                    VariableType::ShortPtr => 2,
+                                    _ => unreachable!()
+                                };
+                                v.size * s
+                            } else {
+                                let s = match v.var_type {
+                                    VariableType::Char => 1,
+                                    VariableType::Short => 2,
+                                    VariableType::CharPtr => 2,
+                                    VariableType::CharPtrPtr => 2,
+                                    VariableType::ShortPtr => 2,
+                                };
+                                s
+                            }
+                        }
+                    }
                     return Ok(())
                 },
                 Rule::parameters => {
@@ -1510,7 +1536,8 @@ impl<'a> CompilerState<'a> {
                 return_signed,
                 return_type,
                 local_variables: Vec::new(),
-                parameters
+                parameters,
+                stack_frame_size: 0
             });
         }
         Ok(())

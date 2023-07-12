@@ -90,8 +90,23 @@ impl<'a> GeneratorState<'a> {
                                     self.sasm(PHA)?;
                                 }
 
-                                // TODO: Push all necessary local variables onto stack
-                                let mut nb_local_variables_to_push = 0;
+                                // Push all necessary local variables onto stack
+                                let mut nb_to_push = 0;
+                                {
+                                    let fx = &self.current_function;
+                                    if let Some(fxx) = fx {
+                                        if let Some(f) = self.compiler_state.functions.get(fxx) {
+                                            nb_to_push = f.stack_frame_size;
+                                        }
+                                    }
+                                }
+                                if f.stack_frame_size < nb_to_push {
+                                    nb_to_push = f.stack_frame_size;
+                                }
+                                for i in 0..nb_to_push {
+                                    self.generate_asm_statement(&format!("LDA LOCAL_VARIABLES+{}", i), Some(2))?;
+                                    self.sasm(PHA)?;
+                                }
 
                                 // Load parameters
                                 {
@@ -172,14 +187,14 @@ impl<'a> GeneratorState<'a> {
                                 }
 
                                 // Note this function in the call tree
-                                let fx = self.current_function.clone();
+                                let fx = &self.current_function;
                                 if let Some(f) = fx {
-                                    if let Some(v) = self.functions_call_tree.get_mut(&f) {
+                                    if let Some(v) = self.functions_call_tree.get_mut(f) {
                                         v.push(var.to_string());
                                     } else {
                                         let mut v = Vec::new();
                                         v.push(var.to_string());
-                                        self.functions_call_tree.insert(f, v);
+                                        self.functions_call_tree.insert(f.clone(), v);
                                     }
                                 }
 
@@ -190,15 +205,21 @@ impl<'a> GeneratorState<'a> {
                                     if self.tmp_in_use {
                                         return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
-                                    if self.acc_in_use {
+                                    if self.acc_in_use || nb_to_push != 0 {
                                         self.asm(STA, &ExprType::Tmp(f.return_signed), pos, false)?; 
-                                        self.sasm(PLA)?; 
+                                        if self.acc_in_use {
+                                            self.sasm(PLA)?;
+                                        } 
                                         self.tmp_in_use = true;
                                         return_tmp = true; 
                                     }
                                 }
 
-                                // TODO: Pop local variables from stack
+                                // Pop local variables from stack
+                                for i in 0..nb_to_push {
+                                    self.sasm(PLA)?;
+                                    self.generate_asm_statement(&format!("STA LOCAL_VARIABLES+{}", nb_to_push - 1 - i), Some(2))?;
+                                }
 
                                 if f.return_type.is_some() {
                                     return if return_tmp {
@@ -595,13 +616,13 @@ impl<'a> GeneratorState<'a> {
         Ok(())
     }
 
-    fn generate_asm_statement(&mut self, s: &'a str, size: Option<u32>) -> Result<(), Error>
+    fn generate_asm_statement(&mut self, s: &str, size: Option<u32>) -> Result<(), Error>
     {
         self.inline(s, size)?;
         Ok(())
     }
 
-    fn generate_goto_statement(&mut self, s: &'a str ) -> Result<(), Error>
+    fn generate_goto_statement(&mut self, s: &str ) -> Result<(), Error>
     {
         self.asm(JMP, &ExprType::Label(format!(".{}", s)), 0, false)?;
         Ok(())
