@@ -90,6 +90,11 @@ impl<'a> GeneratorState<'a> {
                                     self.sasm(PHA)?;
                                 }
 
+                                // It's not necessary anymore to push anythign on the stack for
+                                // saving (due to the use ot the calling tree for variables
+                                // declarations non overlap). It can be even faulty in case of
+                                // parameter overwritting (use of &)
+                                /*
                                 // Push all necessary local variables onto stack
                                 let mut nb_to_push = 0;
                                 {
@@ -107,6 +112,7 @@ impl<'a> GeneratorState<'a> {
                                     self.generate_asm_statement(&format!("LDA LOCAL_VARIABLES+{}", i), Some(2))?;
                                     self.sasm(PHA)?;
                                 }
+                                */
 
                                 // Load parameters
                                 {
@@ -205,7 +211,7 @@ impl<'a> GeneratorState<'a> {
                                     if self.tmp_in_use {
                                         return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                     }
-                                    if self.acc_in_use || nb_to_push != 0 {
+                                    if self.acc_in_use /*|| nb_to_push != 0*/ {
                                         self.asm(STA, &ExprType::Tmp(f.return_signed), pos, false)?; 
                                         if self.acc_in_use {
                                             self.sasm(PLA)?;
@@ -215,11 +221,14 @@ impl<'a> GeneratorState<'a> {
                                     }
                                 }
 
+                                // It's also not necessary to pull any variable from stack
+                                /*
                                 // Pop local variables from stack
                                 for i in 0..nb_to_push {
                                     self.sasm(PLA)?;
                                     self.generate_asm_statement(&format!("STA LOCAL_VARIABLES+{}", nb_to_push - 1 - i), Some(2))?;
                                 }
+                                */
 
                                 if f.return_type.is_some() {
                                     return if return_tmp {

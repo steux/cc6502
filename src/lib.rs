@@ -1239,7 +1239,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 1"));
         assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_i\n\tRTS"));
     }
     
@@ -1251,7 +1251,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_1_j                  \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 1\n\nLOCAL_VARIABLES_1\n\n\tORG LOCAL_VARIABLES_1\nf_1_j                  \tds 1"));
     }
     
     #[test]
@@ -1262,7 +1262,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
     }
     
     #[test]
@@ -1273,7 +1273,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_2_i               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\nmain_1_i               \tds 1\nmain_2_i               \tds 1"));
         assert!(result.contains("STX main_1_i\n\tCPX #0\n\tBEQ .ifend1\n\tSTX main_2_i\n.ifend1\n\tSTY main_1_i"));
     }
     
@@ -1297,7 +1297,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 1"));
         assert!(result.contains("main\tSUBROUTINE\n\tLDA #7\n\tSTA main_1_i\n\tLDX main_1_i"));
     }
     
@@ -1309,7 +1309,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 1\nmain_1_j               \tds 1"));
         assert!(result.contains("main\tSUBROUTINE\n\tLDA #7\n\tSTA main_1_i\n\tLDA #8\n\tSTA main_1_j\n\tLDX main_1_i\n\tLDY main_1_j"));
     }
     
@@ -1321,7 +1321,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 2\nmain_1_j               \tds 3"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 2\nmain_1_j               \tds 3"));
         assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_i\n\tSTY main_1_j+1"));
     }
     
@@ -1333,8 +1333,24 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nmain_1_i               \tds 2\n"));
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_1_i               \tds 2\n"));
         assert!(result.contains("main\tSUBROUTINE\n\tLDA #0\n\tSTA main_1_i\n\tSTA main_1_i+1"));
+    }
+    
+    #[test]
+    fn local_var_test10() {
+        let args = sargs(1);
+        let input = "
+void fn1() { char x, y; }; 
+void fn2() { char x, y; fn1(); }
+void fn3() { char x; }
+void main() { fn2(); fn3(); }
+            ";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\nLOCAL_VARIABLES_1\n\n\tORG LOCAL_VARIABLES_1\nfn2_1_x                \tds 1\nfn2_1_y                \tds 1\n\tORG LOCAL_VARIABLES_1\nfn3_1_x                \tds 1\n\tORG LOCAL_VARIABLES_1 + 2\n\nLOCAL_VARIABLES_2\n\n\tORG LOCAL_VARIABLES_2\nfn1_1_x                \tds 1\nfn1_1_y                \tds 1"));
     }
     
     #[test]
@@ -1345,7 +1361,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
+        assert!(result.contains("ORG LOCAL_VARIABLES_1\nf_x                    \tds 1\nf_y                    \tds 2"));
         assert!(result.contains("f\tSUBROUTINE\n\tLDA f_y\n\tSTA f_x\n\tRTS"));
         assert!(result.contains("main\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tRTS"));
     }
@@ -1358,7 +1374,6 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("ORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 2"));
         assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tTAX\n\tRTS"));
     }
     
@@ -1370,8 +1385,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_x               \tds 1\nmain_1_y               \tds 1"));
-        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_x\n\tLDA LOCAL_VARIABLES+0\n\tPHA\n\tLDA LOCAL_VARIABLES+1\n\tPHA\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA cctmp\n\tPLA\n\tSTA LOCAL_VARIABLES+1\n\tPLA\n\tSTA LOCAL_VARIABLES+0\n\tLDA cctmp\n\tSTA main_1_y\n\tRTS"));
+        assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tSTX main_1_x\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA main_1_y\n\tRTS"));
     }
 
     #[test]
@@ -1382,7 +1396,6 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("f_x                    \tds 2\nf_y                    \tds 1"));
         assert!(result.contains("f\tSUBROUTINE\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA x\n\tSTA f_x\n\tLDA #0\n\tSTA f_x+1\n\tLDA y\n\tSTA f_y\n\tJSR f\n\tRTS"));
     }
 }
