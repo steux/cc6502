@@ -1377,12 +1377,12 @@ char i; void main() { i = one; }";
     #[test]
     fn params_test4() {
         let args = sargs(1);
-        let input = "void f(char *x, char y) { x[Y = 0] = y; }; void main() { char x, y = 0; f(&x, y); }";
+        let input = "char x, y; void f(char *x, char y) { x[Y = 0] = y; }; void main() { f(&x, y); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_x               \tds 1\nmain_1_y               \tds 1"));
-        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_x\n\tLDA LOCAL_VARIABLES+0\n\tPHA\n\tLDA LOCAL_VARIABLES+1\n\tPHA\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA cctmp\n\tPLA\n\tSTA LOCAL_VARIABLES+1\n\tPLA\n\tSTA LOCAL_VARIABLES+0\n\tLDA cctmp\n\tSTA main_1_y\n\tRTS"));
+        assert!(result.contains("f_x                    \tds 2\nf_y                    \tds 1"));
+        assert!(result.contains("f\tSUBROUTINE\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA x\n\tSTA f_x\n\tLDA #0\n\tSTA f_x+1\n\tLDA y\n\tSTA f_y\n\tJSR f\n\tRTS"));
     }
 }
