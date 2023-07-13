@@ -267,9 +267,41 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
+    fn generate_addr(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
+    {
+        match expr {
+            Expr::Identifier(var, sub) => {
+                let v = self.compiler_state.get_variable(var);
+                if v.var_type == VariableType::Char {
+                    let sub_output = self.generate_expr(sub, pos, false, false)?;
+                    match sub_output {
+                        ExprType::Nothing => {
+                            Ok(ExprType::Absolute(var.clone(), true, 0))
+                        },
+                        _ => Err(self.compiler_state.syntax_error("No subscript is allowed in this context", pos))
+                    }
+                } else {
+                    Err(self.compiler_state.syntax_error("& only works on char (8 bits) variables", pos))
+                }
+            },
+            _ => Err(self.compiler_state.syntax_error("& only works on char (8 bits) variables", pos)),
+        }
+    }
+
     fn generate_sizeof(&mut self, expr: &Expr, pos: usize) -> Result<ExprType, Error>
     {
         match expr {
+            Expr::Type(s) => {
+                if s.contains("*") {
+                    Ok(ExprType::Immediate(2))
+                } else if s == "char" {
+                    Ok(ExprType::Immediate(1))
+                } else if s == "short" || s == "short int" || s == "int" {
+                    Ok(ExprType::Immediate(2))
+                } else {
+                    Err(self.compiler_state.syntax_error("Sizeof only works on variables and simple types", pos))
+                }
+            },
             Expr::Identifier(var, _) => {
                 let v = self.compiler_state.get_variable(var);
                 match v.var_type {
@@ -287,7 +319,7 @@ impl<'a> GeneratorState<'a> {
                     VariableType::Short => Ok(ExprType::Immediate(2)),
                 }
             },
-            _ => Err(self.compiler_state.syntax_error("Sizeof only works on variables", pos)),
+            _ => Err(self.compiler_state.syntax_error("Sizeof only works on variables and simple types", pos)),
         }
     }
 
@@ -496,9 +528,11 @@ impl<'a> GeneratorState<'a> {
             Expr::Not(v) => self.generate_not(v, pos),
             Expr::BNot(v) => self.generate_bnot(v, pos),
             Expr::Deref(v) => self.generate_deref(v, pos),
+            Expr::Addr(v) => self.generate_addr(v, pos),
             Expr::Sizeof(v) => self.generate_sizeof(v, pos),
             Expr::Nothing => Ok(ExprType::Nothing),
             Expr::TmpId(s) => Ok(ExprType::Absolute(s.clone(), false, 0)),
+            Expr::Type(_) => Err(self.compiler_state.syntax_error("Misplaced variable type", pos))
         }
     }
     

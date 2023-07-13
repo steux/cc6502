@@ -155,18 +155,19 @@ expr       =   { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ pos
       neg    =   { "-" }  // Negation
       not    =   { "!" }  // Not
       bnot   =   { "~" }  // Bitwise not
-      addr   =   { "&" }  // Adress of
+      addr   =   { "&" }  // Address of
       deref  =   { "*" }  // Dereference
       sizeof =   { "sizeof" } // sizeof
     postfix  =  _{ pp | mm | call }
       pp     =   { "++" } // Increment
       mm     =   { "--" } // Decrement
       call   =   { "(" ~ expr? ~ ")" } // Function call
-    primary  =  _{ int | identifier | "(" ~ expr ~ ")" | quoted_string }
+    primary  =  _{ int | primary_var_type | identifier | "(" ~ expr ~ ")" | quoted_string }
 
 identifier  = { id_name ~ subscript? }
 subscript   = { "[" ~ expr ~ "]" }
       
+primary_var_type = { var_sign? ~ var_simple_type ~ pointer* }
 int = { hexadecimal | octal | decimal | quoted_character }
 decimal     = @{ ("-")* ~ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }
 hexadecimal = @{ "0x" ~ ASCII_HEX_DIGIT+ }

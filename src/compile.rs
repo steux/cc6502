@@ -128,7 +128,9 @@ pub enum Expr {
     MinusMinus(Box<Expr>, bool),
     PlusPlus(Box<Expr>, bool),
     Deref(Box<Expr>),
+    Addr(Box<Expr>),
     Sizeof(Box<Expr>),
+    Type(String),
     TmpId(String),
 }
 
@@ -364,6 +366,7 @@ impl<'a> CompilerState<'a> {
                         lit_strs.insert(name.clone(), v);
                         Ok(Expr::TmpId(name))
                     },
+                    Rule::primary_var_type => Ok(Expr::Type(primary.as_str().into())),
                     rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
                 }
             })
@@ -412,6 +415,7 @@ impl<'a> CompilerState<'a> {
             Rule::not => Ok(Expr::Not(Box::new(rhs?))),
             Rule::bnot => Ok(Expr::BNot(Box::new(rhs?))),
             Rule::deref => Ok(Expr::Deref(Box::new(rhs?))),
+            Rule::addr => Ok(Expr::Addr(Box::new(rhs?))),
             Rule::mmp => Ok(Expr::MinusMinus(Box::new(rhs?), false)),
             Rule::ppp => Ok(Expr::PlusPlus(Box::new(rhs?), false)),
             Rule::sizeof => Ok(Expr::Sizeof(Box::new(rhs?))),
@@ -505,6 +509,7 @@ impl<'a> CompilerState<'a> {
                         lit_strs.insert(name.clone(), v);
                         Ok(Expr::TmpId(name))
                     },
+                    Rule::primary_var_type => Ok(Expr::Type(primary.as_str().into())),
                     rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
                 }
             })
@@ -552,6 +557,7 @@ impl<'a> CompilerState<'a> {
             Rule::not => Ok(Expr::Not(Box::new(rhs?))),
             Rule::bnot => Ok(Expr::BNot(Box::new(rhs?))),
             Rule::deref => Ok(Expr::Deref(Box::new(rhs?))),
+            Rule::addr => Ok(Expr::Addr(Box::new(rhs?))),
             Rule::mmp => Ok(Expr::MinusMinus(Box::new(rhs?), false)),
             Rule::ppp => Ok(Expr::PlusPlus(Box::new(rhs?), false)),
             Rule::sizeof => Ok(Expr::Sizeof(Box::new(rhs?))),
@@ -1655,7 +1661,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         .op(Op::infix(Rule::brs, Assoc::Left) | Op::infix(Rule::bls, Assoc::Left))
         .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
         .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
-        .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::sizeof))
+        .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::addr) | Op::prefix(Rule::sizeof))
         .op(Op::postfix(Rule::call) | Op::postfix(Rule::mm) | Op::postfix(Rule::pp));
    
     let pratt_init_value =
@@ -1674,7 +1680,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         .op(Op::infix(Rule::brs, Assoc::Left) | Op::infix(Rule::bls, Assoc::Left))
         .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
         .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
-        .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::sizeof))
+        .op(Op::prefix(Rule::neg) | Op::prefix(Rule::not) | Op::prefix(Rule::bnot) | Op::prefix(Rule::mmp) | Op::prefix(Rule::ppp) | Op::prefix(Rule::deref) | Op::prefix(Rule::addr) | Op::prefix(Rule::sizeof))
         .op(Op::postfix(Rule::call) | Op::postfix(Rule::mm) | Op::postfix(Rule::pp));
    
     let calculator = 

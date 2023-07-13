@@ -149,23 +149,34 @@ impl<'a> GeneratorState<'a> {
                     } else { *off }
                 } else { *off };
                 match v.var_type {
-                    VariableType::Char => {
+                    VariableType::Char => if !*eight_bits {
                         if high_byte {
-                            dasm_operand = "#0".to_string();
+                            if offset != 0 {
+                                dasm_operand = format!("#>({}+{})", variable, offset);
+                            } else {
+                                dasm_operand = format!("#>{}", variable);
+                            }
+                        } else if offset != 0 {
+                            dasm_operand = format!("#<({}+{})", variable, offset);
+                        } else {
+                            dasm_operand = format!("#<{}", variable);
+                        }
+                        nb_bytes = 2;
+                    } else if high_byte {
+                        dasm_operand = "#0".to_string();
+                        nb_bytes = 2;
+                    } else {
+                        if offset > 0 {
+                            dasm_operand = format!("{}+{}", variable, offset);
+                        } else {
+                            dasm_operand = variable.to_string();
+                        }
+                        if v.memory == VariableMemory::Zeropage {
+                            cycles += 1;
                             nb_bytes = 2;
                         } else {
-                            if offset > 0 {
-                                dasm_operand = format!("{}+{}", variable, offset);
-                            } else {
-                                dasm_operand = variable.to_string();
-                            }
-                            if v.memory == VariableMemory::Zeropage {
-                                cycles += 1;
-                                nb_bytes = 2;
-                            } else {
-                                cycles += 2;
-                                nb_bytes = 3;
-                            }
+                            cycles += 2;
+                            nb_bytes = 3;
                         }
                     },
                     VariableType::Short => {

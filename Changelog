@@ -1,4 +1,5 @@
 v0.9.1 (07/12/2023) :
+    - Added sizeof(type) support
     - Added preliminary support for function parameters
     - Added support for bytes hint in asm statment
 

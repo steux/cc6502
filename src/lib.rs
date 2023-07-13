@@ -898,7 +898,7 @@ char i; void main() { i = one; }";
     }
     
     #[test]
-    fn sizeof_test() {
+    fn sizeof_test1() {
         let args = sargs(1);
         let input = "char arr1[3]; char *arr2[3]; const char *ptr[] = { arr1 }; void main() { X = sizeof(arr1); Y = sizeof(arr2); X = sizeof(ptr); }";
         let mut output = Vec::new();
@@ -906,6 +906,17 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDX #3\n\tLDY #6\n\tLDX #2"));
+    }
+    
+    #[test]
+    fn sizeof_test2() {
+        let args = sargs(1);
+        let input = "void main() { X = sizeof(char); Y = sizeof(int);}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #1\n\tLDY #2"));
     }
     
     #[test]
@@ -1355,6 +1366,18 @@ char i; void main() { i = one; }";
     fn params_test3() {
         let args = sargs(1);
         let input = "char f(char x, char y) { return x + y; }; void main() { char x, y; x = X; y = f(1, 2); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES\n\n\tORG LOCAL_VARIABLES\nf_x                    \tds 1\nf_y                    \tds 1\n\tORG LOCAL_VARIABLES\nmain_1_x               \tds 1\nmain_1_y               \tds 1"));
+        assert!(result.contains("main\tSUBROUTINE\n\tSTX main_1_x\n\tLDA LOCAL_VARIABLES+0\n\tPHA\n\tLDA LOCAL_VARIABLES+1\n\tPHA\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA cctmp\n\tPLA\n\tSTA LOCAL_VARIABLES+1\n\tPLA\n\tSTA LOCAL_VARIABLES+0\n\tLDA cctmp\n\tSTA main_1_y\n\tRTS"));
+    }
+
+    #[test]
+    fn params_test4() {
+        let args = sargs(1);
+        let input = "void f(char *x, char y) { x[Y = 0] = y; }; void main() { char x, y = 0; f(&x, y); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
