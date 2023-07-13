@@ -1398,4 +1398,15 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("f\tSUBROUTINE\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA x\n\tSTA f_x\n\tLDA #0\n\tSTA f_x+1\n\tLDA y\n\tSTA f_y\n\tJSR f\n\tRTS"));
     }
+    
+    #[test]
+    fn var_test1() {
+        let args = sargs(1);
+        let input = "char charx;";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("charx                  \tds 1"));
+    }
 }

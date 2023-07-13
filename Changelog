@@ -1,3 +1,6 @@
+v0.9.2 (07/12/2023) :
+    - Corrected bug with variables beginning with char or int
+
 v0.9.1 (07/12/2023) :
     - Added sizeof(type) support
     - Added preliminary support for function parameters

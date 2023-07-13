@@ -167,7 +167,7 @@ expr       =   { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ pos
 identifier  = { id_name ~ subscript? }
 subscript   = { "[" ~ expr ~ "]" }
       
-primary_var_type = { var_sign? ~ var_simple_type ~ pointer* }
+primary_var_type = { var_sign? ~ var_simple_type ~ !ASCII_ALPHANUMERIC ~ pointer* }
 int = { hexadecimal | octal | decimal | quoted_character }
 decimal     = @{ ("-")* ~ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }
 hexadecimal = @{ "0x" ~ ASCII_HEX_DIGIT+ }
