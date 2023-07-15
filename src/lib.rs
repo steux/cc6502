@@ -30,6 +30,8 @@
 // DONE: Add nbbytes param to asm statement
 // DONE: Add local variables stack storage code
 // DONE: Add functions params support
+// TODO: Accept *ptr
+// TODO: Generate performance warnings
 
 mod cpp;
 pub mod error;
@@ -65,6 +67,10 @@ pub struct Args {
     /// Include directories
     #[arg(short='I')]
     include_directories: Vec<String>,
+
+    /// Warning directives
+    #[arg(short='W')]
+    pub warnings: Vec<String>,
 
     /// Output file name
     #[arg(short, long, default_value="a.out")]
@@ -1397,6 +1403,17 @@ void main() { fn2(); fn3(); }
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("f\tSUBROUTINE\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA x\n\tSTA f_x\n\tLDA #0\n\tSTA f_x+1\n\tLDA y\n\tSTA f_y\n\tJSR f\n\tRTS"));
+    }
+    
+    #[test]
+    fn params_test5() {
+        let args = sargs(1);
+        let input = "char x, y; void f(char *x, char y) { x[0] = y; }; void main() { f(&x, y); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("f\tSUBROUTINE\n\tSTY cctmp\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tLDY cctmp\n\tRTS"));
     }
     
     #[test]

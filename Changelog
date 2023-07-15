@@ -1,3 +1,7 @@
+v1.0 (07/13/2023) :
+    - Added W (warnings) compile flag
+    - Corrected ptr[0] error
+
 v0.9.2 (07/12/2023) :
     - Corrected bug with variables beginning with char or int
 

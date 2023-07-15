@@ -465,7 +465,7 @@ impl<'a> GeneratorState<'a> {
                             } else {
                                 Err(self.compiler_state.syntax_error("Subscript not allowed on variables", pos))
                             },
-                            ExprType::Immediate(val) => if v.var_type != VariableType::Char && v.var_type != VariableType::Short {
+                            ExprType::Immediate(val) => if v.var_type != VariableType::Char && v.var_type != VariableType::Short && v.var_const {
                                 if high_byte && v.var_type == VariableType::CharPtr && v.signed {
                                     self.generate_sign_extend(ExprType::Absolute(variable.into(), true, val), pos)
                                 } else {
