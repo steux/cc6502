@@ -30,9 +30,11 @@ use crate::assemble::{AssemblyCode, AsmMnemonic, AsmMnemonic::*, AsmInstruction}
 use super::{GeneratorState, ExprType, FlagsState};
 
 impl<'a> GeneratorState<'a> {
-    pub fn new(compiler_state: &'a CompilerState, writer: &'a mut dyn Write, insert_code: bool, bankswitching_scheme: &'a str) -> GeneratorState<'a> {
+    pub fn new(compiler_state: &'a CompilerState, writer: &'a mut dyn Write, insert_code: bool, warnings: Vec<String>, bankswitching_scheme: &'a str) -> GeneratorState<'a> {
         GeneratorState {
             compiler_state,
+            insert_code,
+            warnings,
             last_included_line_number: 0,
             last_included_position: 0,
             last_included_char: compiler_state.preprocessed_utf8.chars(),
@@ -46,7 +48,6 @@ impl<'a> GeneratorState<'a> {
             carry_flag_ok: false,
             acc_in_use: false,
             tmp_in_use: false,
-            insert_code,
             whitespaces_regex: Regex::new(r"\s+").unwrap(),
             deferred_plusplus: Vec::new(),
             current_bank: 0,

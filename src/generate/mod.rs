@@ -49,6 +49,8 @@ pub(crate) enum FlagsState {
 
 pub struct GeneratorState<'a> {
     compiler_state: &'a CompilerState<'a>,
+    insert_code: bool,
+    warnings: Vec<String>,
     last_included_line_number: usize,
     last_included_position: usize,
     last_included_char: std::str::Chars<'a>,
@@ -62,7 +64,6 @@ pub struct GeneratorState<'a> {
     carry_flag_ok: bool,
     acc_in_use: bool,
     tmp_in_use: bool,
-    insert_code: bool,
     whitespaces_regex: Regex,
     deferred_plusplus: Vec<(ExprType, usize, bool)>,
     pub current_bank: u32,

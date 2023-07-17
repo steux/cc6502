@@ -264,7 +264,25 @@ impl<'a> GeneratorState<'a> {
                     let sub_output = self.generate_expr(sub, pos, false, false)?;
                     match sub_output {
                         ExprType::Nothing => {
-                            Ok(ExprType::Absolute(var.clone(), true, 0))
+                            if v.var_const {
+                                Ok(ExprType::Absolute(var.clone(), true, 0))
+                            } else {
+                                // We have to use indirect addressing for this deref
+                                if self.tmp_in_use {
+                                    Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                } else {
+                                    if !self.saved_y {
+                                        if self.warnings.iter().any(|s| s == "all" || s == "perf") {
+                                            println!("Performance warning: Y has to be saved on line {}", pos);
+                                        }
+                                        self.asm(STY, &ExprType::Tmp(false), pos, false)?;
+                                        self.saved_y = true;
+                                        self.tmp_in_use = true;
+                                    }
+                                    self.asm(LDY, &ExprType::Immediate(0), pos, false)?;
+                                    Ok(ExprType::AbsoluteY(var.into()))
+                                }
+                            }
                         },
                         _ => Err(self.compiler_state.syntax_error("No subscript is allowed in this context", pos))
                     }
@@ -476,6 +494,9 @@ impl<'a> GeneratorState<'a> {
                                     Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 } else if let Some(dummy_pos) = dummy {
                                     self.tmp_in_use = true;
+                                    if self.warnings.iter().any(|s| s == "all" || s == "perf") {
+                                        println!("Performance warning: Y has to be saved on line {}", pos);
+                                    }
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
                                     self.saved_y = true;
@@ -489,6 +510,9 @@ impl<'a> GeneratorState<'a> {
                                     Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                 } else if let Some(dummy_pos) = dummy {
                                     self.tmp_in_use = true;
+                                    if self.warnings.iter().any(|s| s == "all" || s == "perf") {
+                                        println!("Performance warning: Y has to be saved on line {}", pos);
+                                    }
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
                                     self.saved_y = true;

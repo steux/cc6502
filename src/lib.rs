@@ -30,8 +30,8 @@
 // DONE: Add nbbytes param to asm statement
 // DONE: Add local variables stack storage code
 // DONE: Add functions params support
-// TODO: Accept *ptr
-// TODO: Generate performance warnings
+// DONE: Accept *ptr
+// DONE: Generate performance warnings
 
 mod cpp;
 pub mod error;
@@ -123,6 +123,7 @@ mod tests {
             version: false,
             assembler_output: true,
             debug: false,
+            warnings: Vec::new()
         }
     }
 
@@ -1409,6 +1410,17 @@ void main() { fn2(); fn3(); }
     fn params_test5() {
         let args = sargs(1);
         let input = "char x, y; void f(char *x, char y) { x[0] = y; }; void main() { f(&x, y); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("f\tSUBROUTINE\n\tSTY cctmp\n\tLDY #0\n\tLDA f_y\n\tSTA (f_x),Y\n\tLDY cctmp\n\tRTS"));
+    }
+    
+    #[test]
+    fn params_test6() {
+        let args = sargs(1);
+        let input = "char x, y; void f(char *x, char y) { *x = y; }; void main() { f(&x, y); }";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();

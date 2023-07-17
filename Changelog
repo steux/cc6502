@@ -1,4 +1,6 @@
 v1.0 (07/13/2023) :
+    - Accept *ptr with ptr not const (allows char* params)
+    - Generate performance warning for *ptr ("hidden" Y indirect access)
     - Added W (warnings) compile flag
     - Corrected ptr[0] error
 
