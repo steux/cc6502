@@ -303,7 +303,7 @@ impl<'a> GeneratorState<'a> {
                     let sub_output = self.generate_expr(sub, pos, false, false)?;
                     match sub_output {
                         ExprType::Nothing => {
-                            Ok(ExprType::Absolute(var.clone(), true, 0))
+                            Ok(ExprType::Absolute(var.clone(), false, 0))
                         },
                         _ => Err(self.compiler_state.syntax_error("No subscript is allowed in this context", pos))
                     }
