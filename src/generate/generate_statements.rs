@@ -273,7 +273,7 @@ impl<'a> GeneratorState<'a> {
                                 } else {
                                     if !self.saved_y {
                                         if self.warnings.iter().any(|s| s == "all" || s == "perf") {
-                                            println!("Performance warning: Y has to be saved on line {}", pos);
+                                            self.compiler_state.warning("Performance hit. Y has to be saved", pos);
                                         }
                                         self.asm(STY, &ExprType::Tmp(false), pos, false)?;
                                         self.saved_y = true;
@@ -495,7 +495,7 @@ impl<'a> GeneratorState<'a> {
                                 } else if let Some(dummy_pos) = dummy {
                                     self.tmp_in_use = true;
                                     if self.warnings.iter().any(|s| s == "all" || s == "perf") {
-                                        println!("Performance warning: Y has to be saved on line {}", pos);
+                                        self.compiler_state.warning("Performance hit. Y has to be saved", pos);
                                     }
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
@@ -511,7 +511,7 @@ impl<'a> GeneratorState<'a> {
                                 } else if let Some(dummy_pos) = dummy {
                                     self.tmp_in_use = true;
                                     if self.warnings.iter().any(|s| s == "all" || s == "perf") {
-                                        println!("Performance warning: Y has to be saved on line {}", pos);
+                                        self.compiler_state.warning("Performance hit. Y has to be saved", pos);
                                     }
                                     self.asm_save_y(dummy_pos);
                                     self.asm(LDY, &sub_output, pos, false)?;
