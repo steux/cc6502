@@ -1357,7 +1357,7 @@ void main() { fn2(); fn3(); }
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LOCAL_VARIABLES_0\n\n\nLOCAL_VARIABLES_1\n\n\tORG LOCAL_VARIABLES_1\nfn2_1_x                \tds 1\nfn2_1_y                \tds 1\n\tORG LOCAL_VARIABLES_1\nfn3_1_x                \tds 1\n\tORG LOCAL_VARIABLES_1 + 2\n\nLOCAL_VARIABLES_2\n\n\tORG LOCAL_VARIABLES_2\nfn1_1_x                \tds 1\nfn1_1_y                \tds 1"));
+        assert!(result.contains("LOCAL_VARIABLES_1\n\n\tORG LOCAL_VARIABLES_1\nfn2_1_x                \tds 1\nfn2_1_y                \tds 1\n\tORG LOCAL_VARIABLES_1\nfn3_1_x                \tds 1\n\tORG LOCAL_VARIABLES_1 + 2\n\nLOCAL_VARIABLES_2\n\n\tORG LOCAL_VARIABLES_2\nfn1_1_x                \tds 1\nfn1_1_y                \tds 1"));
     }
     
     #[test]

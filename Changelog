@@ -1,4 +1,7 @@
-v1.0 (07/13/2023) :
+v1.0.1 (08/14/2023) : 
+    - Corrected bug wrt cc2600 compatibility with v1.0.0
+
+v1.0.0 (07/13/2023) :
     - Accept *ptr with ptr not const (allows char* params)
     - Generate performance warning for *ptr ("hidden" Y indirect access)
     - Added W (warnings) compile flag

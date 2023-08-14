@@ -1800,10 +1800,11 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         memory: VariableMemory::Zeropage,
         var_const: true,
         alignment: 1,
-        def: VariableDefinition::Value(0x2d),
+        def: VariableDefinition::Value(VariableValue::Int(0x2d)),
         var_type: VariableType::Char, 
         size: 1,
         reversed: false, scattered: None, holeydma: false,
+        global: true
     });
 
     // Generate assembly code from compilation output (abstract syntax tree)

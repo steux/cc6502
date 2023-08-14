@@ -230,12 +230,16 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
     
     let mut level = 0;
     for l in function_levels {
-        gstate.write(&format!("\nLOCAL_VARIABLES_{}\n\n", level))?;
         let mut maxbsize = 0;
         let mut bsize = 0;
+        let mut ft = true;
         for fx in l {
             if let Some(f) = compiler_state.functions.get(&fx) {
                 if gstate.functions_actually_in_use.get(&fx).is_some() && f.local_variables.len() != 0 {
+                    if ft {
+                        gstate.write(&format!("\nLOCAL_VARIABLES_{}\n\n", level))?;
+                        ft = false;
+                    }
                     bsize = 0;
                     gstate.write(&format!("\tORG LOCAL_VARIABLES_{}\n", level))?;
                     for vx in &f.local_variables {
