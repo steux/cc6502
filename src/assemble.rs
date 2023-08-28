@@ -493,13 +493,13 @@ impl AssemblyCode {
                 if let Some(AsmLine::Instruction(inst)) = &first {
                     if inst.dasm_operand.starts_with('#') {
                         if inst.mnemonic == AsmMnemonic::LDA {
-                            accumulator = Some(inst.dasm_operand[1..].parse::<i32>().unwrap());
+                            accumulator = inst.dasm_operand[1..].parse::<i32>().ok();
                         }
                         if inst.mnemonic == AsmMnemonic::LDX {
-                            x_register = Some(inst.dasm_operand[1..].parse::<i32>().unwrap());
+                            x_register = inst.dasm_operand[1..].parse::<i32>().ok();
                         }
                         if inst.mnemonic == AsmMnemonic::LDY {
-                            y_register = Some(inst.dasm_operand[1..].parse::<i32>().unwrap());
+                            y_register = inst.dasm_operand[1..].parse::<i32>().ok();
                         }
                     }
                 } else { unreachable!(); }

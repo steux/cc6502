@@ -1,3 +1,6 @@
+v1.0.2 (08/28/2023) :
+    - Corrected a small bug in assemble.rs in optimizer, the sometimes results in a Rust panic during compilation
+
 v1.0.1 (08/14/2023) : 
     - Corrected bug wrt cc2600 compatibility with v1.0.0
 
