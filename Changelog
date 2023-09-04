@@ -1,3 +1,6 @@
+v1.0.3 (09/04/2023) :
+    - Corrected a bug wrt to double use of Y register when assigning to Y while using Y as an index
+
 v1.0.2 (08/28/2023) :
     - Corrected a small bug in assemble.rs in optimizer, the sometimes results in a Rust panic during compilation
 

@@ -109,6 +109,9 @@ impl<'a> GeneratorState<'a> {
                 }
             },
             ExprType::Y => {
+                if self.saved_y {
+                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                }
                 match right {
                     ExprType::Immediate(_) | ExprType::AbsoluteX(_) => {
                         self.asm(LDY, right, pos, high_byte)?;
