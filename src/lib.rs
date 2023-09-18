@@ -1438,4 +1438,15 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("charx                  \tds 1"));
     }
+    
+    #[test]
+    fn whitespace_test() {
+        let args = sargs(1);
+        let input = "void main() { char charz; charz = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #1\n\tSTA main_1_charz"));
+    }
 }

@@ -26,11 +26,11 @@ decl = { var_decl
        | included_assembler
        }
 var_decl = { var_type ~ global_id ~ ("," ~ global_id)* ~ ";"+ }
-var_type = { (var_const | superchip | ramchip | bank | aligned | display | frequency | reversed | scattered | holeydma | screencode )* ~ var_sign? ~ var_simple_type }
+var_type = ${ ((var_const | superchip | ramchip | bank | aligned | display | frequency | reversed | scattered | holeydma | screencode) ~ WHITESPACE+ )* ~ (var_sign ~ WHITESPACE+)? ~ var_simple_type ~ WHITESPACE+ }
 local_var_decl = { local_var_decl_const | local_var_decl_mut }
 local_var_decl_const = { "const" ~ var_type ~ global_id ~ ("," ~ global_id)* ~ ";" }
 local_var_decl_mut = { local_var_type ~ local_id ~ ("," ~ local_id)* ~ ";" }
-local_var_type = { var_sign? ~ var_simple_type }
+local_var_type = ${ (var_sign ~ WHITESPACE+)? ~ var_simple_type ~ WHITESPACE+ }
 var_const = { "const" }
 superchip = { "superchip" }
 ramchip = { "ramchip" }
@@ -38,7 +38,7 @@ display = { "display" }
 frequency = { "frequency" }
 aligned = { "aligned" ~ "(" ~ calc_expr ~ ")" }
 var_sign = { "signed" | "unsigned" } 
-var_simple_type = { "char" | ("short" ~ ("int")?) | "int" }
+var_simple_type = ${ "char" | ("short" ~ (WHITESPACE+ ~ "int")?) | "int" }
 reversed = { "reversed" }
 scattered = { "scattered" ~ "(" ~ calc_expr ~ "," ~ calc_expr ~ ")" }
 holeydma = { "holeydma" }

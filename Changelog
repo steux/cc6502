@@ -1,3 +1,6 @@
+v1.0.4 (09/18/2023) :
+    - Corrected a bug wrt whitespace management in grammar (charz = 1 was accepted as a z variable declaration)
+
 v1.0.3 (09/04/2023) :
     - Corrected a bug wrt to double use of Y register when assigning to Y while using Y as an index
 
