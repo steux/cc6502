@@ -1429,6 +1429,17 @@ void main() { fn2(); fn3(); }
     }
     
     #[test]
+    fn params_test7() {
+        let args = sargs(1);
+        let input = "char x, y, z; void f(char *x, char y, char z) { *x = z; }; void main() { f(&x, y, z); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("f\tSUBROUTINE\n\tSTY cctmp\n\tLDY #0\n\tLDA f_z\n\tSTA (f_x),Y\n\tLDY cctmp\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #<x\n\tSTA f_x\n\tLDA #>x\n\tSTA f_x+1\n\tLDA y\n\tSTA f_y\n\tLDA z\n\tSTA f_z\n\tJSR f\n\tRTS"));
+    }
+    
+    #[test]
     fn var_test1() {
         let args = sargs(1);
         let input = "char charx;";
