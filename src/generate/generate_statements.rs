@@ -159,6 +159,7 @@ impl<'a> GeneratorState<'a> {
                                     }
                                 }
 
+                                debug!("Function call from bank #{}; {:?}", self.current_bank, &f);
                                 if f.interrupt {
                                     return Err(self.compiler_state.syntax_error("Can't call an interrupt routine", pos))
                                 }
@@ -168,7 +169,7 @@ impl<'a> GeneratorState<'a> {
                                     } else {
                                         return Err(self.compiler_state.syntax_error("Undefined function", pos));
                                     }
-                                } else if f.bank == self.current_bank || self.bankswitching_scheme == "3EP" {
+                                } else if f.bank == self.current_bank || self.bankswitching_scheme == "3EP" || (self.bankswitching_scheme == "SuperGame" && f.bank == 0) {
                                     self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                 } else if self.bankswitching_scheme == "3E" {
                                     if self.current_bank == 0 {
