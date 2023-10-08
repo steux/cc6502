@@ -1,3 +1,6 @@
+v1.0.8 (10/08/2023) :
+    - Fixed a bug on win32 with CR/LF included asm files
+
 v1.0.7 (10/05/2023) :
     - Fixed bankswtiching issue with SuperGames 
 

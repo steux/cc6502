@@ -1585,14 +1585,15 @@ impl<'a> CompilerState<'a> {
                     let mut bank = None;
                     let mut split = str.split('\n');
                     for _ in 0..4 {
-                        let line = split.next().unwrap();
-                        if line.trim().starts_with("; file: ") {
+                        let line = split.next().unwrap().trim();
+                        println!("Asm line: {}", &line);
+                        if line.starts_with("; file: ") {
                             filename = Some(line.split_at(8).1.into()); 
                         }
-                        if line.trim().starts_with("; codesize: ") {
+                        if line.starts_with("; codesize: ") {
                             codesize = line.split_at(12).1.parse::<usize>().ok(); 
                         }
-                        if line.trim().starts_with("; bank: ") {
+                        if line.starts_with("; bank: ") {
                             bank = line.split_at(8).1.parse::<u8>().ok(); 
                         }
                     }
