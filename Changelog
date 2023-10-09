@@ -1,3 +1,6 @@
+v1.0.9 (10/09/2023) :
+    - Removed a debug println 
+
 v1.0.8 (10/08/2023) :
     - Fixed a bug on win32 with CR/LF included asm files
 

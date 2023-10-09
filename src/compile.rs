@@ -1586,7 +1586,6 @@ impl<'a> CompilerState<'a> {
                     let mut split = str.split('\n');
                     for _ in 0..4 {
                         let line = split.next().unwrap().trim();
-                        println!("Asm line: {}", &line);
                         if line.starts_with("; file: ") {
                             filename = Some(line.split_at(8).1.into()); 
                         }
