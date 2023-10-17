@@ -717,6 +717,17 @@ char i; void main() { i = one; }";
     }
     
     #[test]
+    fn right_shift_test4() {
+        let args = sargs(1);
+        let input = "char i; unsigned short j; void main() { i = (j >> 8) >> 4; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA j+1\n\tLSR\n\tLSR\n\tLSR\n\tLSR\n\tSTA i"));
+    }
+    
+    #[test]
     fn comma_test() {
         let args = sargs(1);
         let input = "void main() { for (Y = 0, X = 0; X != 10; Y++, X++); }";
