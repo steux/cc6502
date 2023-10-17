@@ -208,6 +208,7 @@ pub struct CompilerState<'a> {
     literal_counter: usize,
     in_scope_variables: Vec<HashMap<String, String>>,
     current_function: String,
+    variable_counter: u32,
 }
 
 impl<'a> CompilerState<'a> {
@@ -1268,9 +1269,9 @@ impl<'a> CompilerState<'a> {
                                     Rule::id_name => {
                                         shortname = p.as_str();
                                         name = format!("{}_{}_{shortname}", self.current_function, self.in_scope_variables.len()); 
-                                        start = p.as_span().start();
                                         if self.variables.get(&name).is_some() {
-                                            return Err(self.syntax_error(&format!("Variable {} already defined", &name), start));
+                                            name = format!("{}_{}_{shortname}_{}", self.current_function, self.in_scope_variables.len(), self.variable_counter); 
+                                            self.variable_counter += 1;
                                         }
                                     },
                                     Rule::array_spec => {
@@ -1754,7 +1755,8 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         signed_chars: args.signed_chars,
         literal_counter: 0,
         in_scope_variables: Vec::new(),
-        current_function: String::new()
+        current_function: String::new(),
+        variable_counter: 0
     };
 
     let r = Cc2600Parser::parse(Rule::program, preprocessed_utf8);

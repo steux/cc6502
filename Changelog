@@ -1,3 +1,6 @@
+v1.0.10 (10/17/2023) :
+    - Bug fix : Already defined local functions in blocks 
+
 v1.0.9 (10/09/2023) :
     - Removed a debug println 
 
