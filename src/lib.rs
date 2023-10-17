@@ -32,8 +32,8 @@
 // DONE: Add functions params support
 // DONE: Accept *ptr
 // DONE: Generate performance warnings
-// TODO: Bug fix : Already defined local functions in blocks 
-// TODO: Bug fix: (x << 4) << 8 != x << 12
+// DONE: Bug fix : Already defined local functions in blocks 
+// DONE: Bug fix: (x << 4) << 8 != x << 12
 //
 mod cpp;
 pub mod error;

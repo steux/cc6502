@@ -405,7 +405,7 @@ impl<'a> GeneratorState<'a> {
         };
         match right {
             ExprType::Immediate(v) => {
-                if *v >= 0 && *v <= 8 {
+                if *v >= 0 && *v <= 7 {
                     if signed && operation == LSR {
                         if *v == 1 {
                             self.asm(CMP, &ExprType::Immediate(0x80), pos, false)?;
@@ -424,9 +424,13 @@ impl<'a> GeneratorState<'a> {
                             self.sasm(operation)?;
                         }
                     }
-                } else {
+                } else if *v < 0 {
                     return Err(self.compiler_state.syntax_error("Negative shift operation not allowed", pos));
-                } 
+                } else if *v == 8 {
+                    return Err(self.compiler_state.syntax_error("Operation too complex for the compiler. Please use an intermediate variable", pos));
+                } else {
+                    return Ok(ExprType::Immediate(0));
+                }
             },
             _ => return Err(self.compiler_state.syntax_error("Incorrect right value for shift operation (positive constants only)", pos))
         };
