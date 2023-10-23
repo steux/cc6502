@@ -447,8 +447,12 @@ impl<'a> GeneratorState<'a> {
             },
             Expr::Identifier(var, sub) => {
                 match var.as_str() {
-                    "X" => Ok(ExprType::X),
-                    "Y" => Ok(ExprType::Y),
+                    "X" => if high_byte { Ok(ExprType::Immediate(0)) } else {
+                        Ok(ExprType::X)
+                    },
+                    "Y" => if high_byte { Ok(ExprType::Immediate(0)) } else {
+                        Ok(ExprType::Y)
+                    },
                     variable => {
                         let v = self.compiler_state.get_variable(variable);
                         let dummy = if let Expr::Nothing = **sub { None } else {

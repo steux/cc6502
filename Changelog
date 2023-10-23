@@ -2,6 +2,7 @@ v1.0.10 (10/17/2023) :
     - Bug fix : Already defined local functions in blocks 
     - Bug fix : Forbid complex 16 bits operations with 8 bits shifts
     - Bug fix : corrected (short >> 8) >> 4 
+    - Bug fix : corrected 16 bits +X, +Y
 
 v1.0.9 (10/09/2023) :
     - Removed a debug println 

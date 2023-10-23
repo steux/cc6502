@@ -34,7 +34,8 @@
 // DONE: Generate performance warnings
 // DONE: Bug fix : Already defined local functions in blocks 
 // DONE: Bug fix: (x << 4) << 8 != x << 12
-//
+// DONE: Fix 16 bits +=Y
+
 mod cpp;
 pub mod error;
 pub mod compile;
@@ -605,6 +606,17 @@ void main()
     }
     
     #[test]
+    fn sign_extend_test2() {
+        let args = sargs(1);
+        let input = "short i; void main() { i += -1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA i\n\tCLC\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
+    }
+    
+    #[test]
     fn splices_test() {
         let args = sargs(1);
         let input = "#define one \\
@@ -780,6 +792,28 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
+    }
+    
+    #[test]
+    fn sixteen_bits_test4() {
+        let args = sargs(1);
+        let input = "short i; void main() { i += X; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA i\n\tCLC\n\tSTX cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
+    }
+    
+    #[test]
+    fn sixteen_bits_test5() {
+        let args = sargs(1);
+        let input = "short i; void main() { i += Y; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA i\n\tCLC\n\tSTY cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
     }
     
     #[test]
