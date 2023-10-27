@@ -257,7 +257,7 @@ impl<'a> GeneratorState<'a> {
             },
             ExprType::Absolute(varname, eight_bits, offset) => {
                 let v = self.compiler_state.get_variable(varname);
-                if (v.var_type == VariableType::Short || v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtr) && *op == Operation::Brs(false) && !eight_bits {
+                if (v.var_type == VariableType::Short || v.var_type == VariableType::ShortPtr || v.var_type == VariableType::CharPtr || v.var_type == VariableType::CharPtrPtr) && *op == Operation::Brs(false) && !eight_bits {
                     // Special shift 8 case for extracting higher byte
                     match right {
                         ExprType::Immediate(value) => {
