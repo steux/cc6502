@@ -883,6 +883,7 @@ impl<'a> CompilerState<'a> {
     fn compile_var_decl(&mut self, pairs: Pairs<Rule>, global: bool) -> Result<(), Error>
     {
         let mut var_type_ex = VariableType::Char;
+        let mut set_const = !global;
         let mut var_const = !global;
         let mut signedness_specified = false;
         let mut signed = self.signed_chars;
@@ -899,7 +900,10 @@ impl<'a> CompilerState<'a> {
                         //debug!("{:?}", p);
                         let start = p.as_span().start();
                         match p.as_rule() {
-                            Rule::var_const => var_const = true, //memory = VariableMemory::ROM(0),
+                            Rule::var_const => {
+                                var_const = true;
+                                set_const = true;
+                            },
                             Rule::bank => memory = VariableMemory::ROM(p.into_inner().next().unwrap().as_str().parse::<u32>().unwrap()),
                             Rule::superchip => memory = VariableMemory::Superchip,
                             Rule::display => memory = VariableMemory::Display,
@@ -958,7 +962,10 @@ impl<'a> CompilerState<'a> {
                                 VariableType::Char => VariableType::CharPtr,
                                 _ => return Err(self.syntax_error("Type too complex not supported", start))
                             },
-                            Rule::var_const => var_const = true,
+                            Rule::var_const => {
+                                var_const = true;
+                                set_const = true;
+                            },
                             Rule::id_name => {
                                 shortname = p.as_str();
                                 if global {
@@ -991,9 +998,12 @@ impl<'a> CompilerState<'a> {
                             },
                             Rule::var_def => {
                                 let px = p.into_inner().next().unwrap();
+                                start = px.as_span().start();
                                 match px.as_rule() {
                                     Rule::calc_expr => {
-                                        var_const = true;
+                                        if !set_const {
+                                            return Err(self.syntax_error("Non constant global variable can't be statically initialized", start))
+                                        }
                                         let vx = self.parse_calc(px.into_inner())?;
                                         def = VariableDefinition::Value(VariableValue::Int(vx));
                                         if var_type == VariableType::CharPtr && vx > 0xff {
@@ -1001,7 +1011,9 @@ impl<'a> CompilerState<'a> {
                                         }
                                     },
                                     Rule::var_ptr => {
-                                        var_const = true;
+                                        if !set_const {
+                                            return Err(self.syntax_error("Non constant global variable can't be statically initialized", start))
+                                        }
                                         let mut pxx = px.into_inner();
                                         let id_name = pxx.next().unwrap().as_str().to_string();
                                         def = VariableDefinition::Value(match pxx.next() {
@@ -1028,7 +1040,9 @@ impl<'a> CompilerState<'a> {
                                         });
                                     },
                                     Rule::array_def => {
-                                        start = px.as_span().start();
+                                        if !set_const {
+                                            return Err(self.syntax_error("Non constant global variable can't be statically initialized", start))
+                                        }
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
                                             _ => VariableMemory::ROM(0)
@@ -1135,10 +1149,11 @@ impl<'a> CompilerState<'a> {
                                             size = Some(v.len());
                                             def = VariableDefinition::ArrayOfPointers(v);
                                         }
-                                        var_const = true;
                                     },
                                     Rule::quoted_string => {
-                                        start = px.as_span().start();
+                                        if !set_const {
+                                            return Err(self.syntax_error("Non constant global variable can't be statically initialized", start))
+                                        }
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
                                             _ => VariableMemory::ROM(0)
@@ -1163,7 +1178,6 @@ impl<'a> CompilerState<'a> {
                                         }
                                         size = Some(v.len());
                                         def = VariableDefinition::Array(v);
-                                        var_const = true;
                                     },
                                     _ => unreachable!()
                                 } 

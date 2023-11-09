@@ -35,6 +35,7 @@
 // DONE: Bug fix : Already defined local functions in blocks 
 // DONE: Bug fix: (x << 4) << 8 != x << 12
 // DONE: Fix 16 bits +=Y
+// DONE: Initialized global data should be const
 
 mod cpp;
 pub mod error;
@@ -643,7 +644,7 @@ char i; void main() { i = one; }";
     #[test]
     fn quoted_string_test2() {
         let args = sargs(1);
-        let input = "char *s = \"\tzobi\\\"\\\\\";";
+        let input = "const char *s = \"\tzobi\\\"\\\\\";";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
@@ -654,7 +655,7 @@ char i; void main() { i = one; }";
     #[test]
     fn quoted_string_test3() {
         let args = sargs(1);
-        let input = "char *s[2] = {\"zobi\", \"zoba\"};";
+        let input = "const char *s[2] = {\"zobi\", \"zoba\"};";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
@@ -665,7 +666,7 @@ char i; void main() { i = one; }";
     #[test]
     fn quoted_string_test4() {
         let args = sargs(1);
-        let input = "char *s = \"zobi/*comment*/\";";
+        let input = "const char *s = \"zobi/*comment*/\";";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
@@ -687,7 +688,7 @@ char i; void main() { i = one; }";
     #[test]
     fn quoted_string_test6() {
         let args = sargs(1);
-        let input = "char *s = \"hello, \"\n\t\"world!\";";
+        let input = "const char *s = \"hello, \"\n\t\"world!\";";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
@@ -1266,7 +1267,7 @@ char i; void main() { i = one; }";
     #[test]
     fn array_decl_test1() {
         let args = sargs(1);
-        let input = "char hello[] = \"Hello\"; char a[] = {0, hello, hello & 0xff, hello >> 8};";
+        let input = "const char hello[] = \"Hello\"; const char a[] = {0, hello, hello & 0xff, hello >> 8};";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
@@ -1277,7 +1278,7 @@ char i; void main() { i = one; }";
     #[test]
     fn decl_test1() {
         let args = sargs(1);
-        let input = "char hello[] = \"Hello\"; char x = hello & 0xff; char y = hello >> 8;";
+        let input = "const char hello[] = \"Hello\"; const char x = hello & 0xff; const char y = hello >> 8;";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();

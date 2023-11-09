@@ -1,6 +1,6 @@
 [package]
 name = "cc6502"
-version = "1.0.11"
+version = "1.0.12"
 edition = "2021"
 authors = ["Bruno STEUX <bruno.steux@gmail.com>"]
 license = "GPL-3.0-or-later"
