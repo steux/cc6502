@@ -926,6 +926,8 @@ impl<'a> CompilerState<'a> {
                             },
                             Rule::reversed => reversed = true,
                             Rule::scattered => {
+                                var_const = true;
+                                set_const = true;
                                 let mut px = p.into_inner();
                                 let a = self.parse_calc(px.next().unwrap().into_inner())?;
                                 let b = self.parse_calc(px.next().unwrap().into_inner())?;
