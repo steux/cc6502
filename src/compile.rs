@@ -1036,6 +1036,31 @@ impl<'a> CompilerState<'a> {
                                                         return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                     }
                                                 },
+                                                Rule::ptr_offset => {
+                                                    let offset = parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap()) as usize;
+                                                    match pxx.next() {
+                                                        Some(x) => match x.as_rule() {
+                                                            Rule::ptr_low => {
+                                                                let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                if val == 255 {
+                                                                    VariableValue::LowPtr((id_name, offset))
+                                                                } else {
+                                                                    return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                }
+                                                            },
+                                                            Rule::ptr_hi => {
+                                                                let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                if val == 8 {
+                                                                    VariableValue::HiPtr((id_name, offset))
+                                                                } else {
+                                                                    return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                }
+                                                            },
+                                                            _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                        },
+                                                        None => VariableValue::LowPtr((id_name, offset)),
+                                                    }
+                                                },
                                                 _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                             },
                                             None => VariableValue::LowPtr((id_name, 0)),
@@ -1054,6 +1079,7 @@ impl<'a> CompilerState<'a> {
                                         }
                                         if var_type == VariableType::CharPtr || var_type == VariableType::ShortPtr {
                                             let mut v = Vec::new();
+
                                             for pxx in px.into_inner() {
                                                 match pxx.as_rule() {
                                                     Rule::calc_expr => v.push(VariableValue::Int(self.parse_calc(pxx.into_inner())?)),
@@ -1076,6 +1102,31 @@ impl<'a> CompilerState<'a> {
                                                                         v.push(VariableValue::HiPtr((id_name, 0)))
                                                                     } else {
                                                                         return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                    }
+                                                                },
+                                                                Rule::ptr_offset => {
+                                                                    let offset = parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap()) as usize;
+                                                                    match pxxx.next() {
+                                                                        Some(x) => match x.as_rule() {
+                                                                            Rule::ptr_low => {
+                                                                                let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                                if val == 255 {
+                                                                                    v.push(VariableValue::LowPtr((id_name, offset)))
+                                                                                } else {
+                                                                                    return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                                }
+                                                                            },
+                                                                            Rule::ptr_hi => {
+                                                                                let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
+                                                                                if val == 8 {
+                                                                                    v.push(VariableValue::HiPtr((id_name, offset)))
+                                                                                } else {
+                                                                                    return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                                }
+                                                                            },
+                                                                            _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
+                                                                        },
+                                                                        None => v.push(VariableValue::LowPtr((id_name, offset))),
                                                                     }
                                                                 },
                                                                 _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
@@ -1103,7 +1154,7 @@ impl<'a> CompilerState<'a> {
                                                         let offset = match pxxx.next() {
                                                             Some(x) => match x.as_rule() {
                                                                 Rule::ptr_offset => {
-                                                                    self.parse_calc(x.into_inner().next().unwrap().into_inner())? as usize
+                                                                    parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap()) as usize
                                                                 },
                                                                 _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", s), start))
                                                             },
