@@ -30,7 +30,7 @@ impl<'a> GeneratorState<'a> {
     pub(crate) fn generate_arithm(&mut self, l: &ExprType, op: &Operation, r: &ExprType,  pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
-        debug!("Arithm: {:?},{:?},{:?}", l, op, r);    
+        debug!("Arithm: {:?},{:?},{:?} (hb:{})", l, op, r, high_byte);    
         let left;
         let right;
 
@@ -192,7 +192,9 @@ impl<'a> GeneratorState<'a> {
         };
         match right2 {
             ExprType::Immediate(v) => {
-                if high_byte || operation != AND || *v != 0xff {
+                if !high_byte && operation == ADC && *v & 0xff == 0 {
+                    // Do not insert the ADD #0 instruction
+                } else if high_byte || operation != AND || *v != 0xff {
                     if *v != 0 || operation == AND || high_byte { 
                         self.asm(operation, right2, pos, high_byte)?; 
                     };

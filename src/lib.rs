@@ -39,9 +39,7 @@
 // DONE: Check (char) >> 8 => 0 (too complex?)
 // DONE: Check X << 8 => too complex ?
 // DONE: Check for (X = 0; X < 10;) { X++ }
-// TODO: Optimize ptr += 16 * 256
-// TODO: Optimize LDA followed by STA (remove STA)
-// TODO: Optimize LDA followed by LDA (remove first LDA)
+// DONE: Optimize ptr |= 16 * 256
 //
 mod cpp;
 pub mod error;
