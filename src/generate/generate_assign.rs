@@ -177,8 +177,9 @@ impl<'a> GeneratorState<'a> {
                 match right {
                     ExprType::X => {
                         match left {
-                            ExprType::Absolute(_, eight_bits, offset) => {
+                            ExprType::Absolute(_, _, _) => {
                                 self.asm(STX, left, pos, high_byte)?;
+                                /*
                                 if !eight_bits {
                                     if *offset == 0 {
                                         // Set high byte of this 16 bits variable to 0 (since X is unsigned)
@@ -192,7 +193,7 @@ impl<'a> GeneratorState<'a> {
                                         unreachable!(); 
                                     }
                                     self.flags = FlagsState::Unknown;
-                                }
+                                }*/
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::X)
                             },
@@ -248,8 +249,9 @@ impl<'a> GeneratorState<'a> {
                     },
                     ExprType::Y => {
                         match left {
-                            ExprType::Absolute(_, eight_bits, offset) => {
+                            ExprType::Absolute(_, _, _) => {
                                 self.asm(STY, left, pos, high_byte)?;
+                                /*
                                 if !eight_bits {
                                     if *offset == 0 {
                                         if self.acc_in_use { self.sasm(PHA)?; }
@@ -263,6 +265,7 @@ impl<'a> GeneratorState<'a> {
                                     }
                                     self.flags = FlagsState::Unknown;
                                 }
+                                */
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
                             },

@@ -1,6 +1,7 @@
 v1.0.12 (11/10/2023) :
     - Initialized global data should be const
     - Added support for pointer offsets in global array declarations
+    - Implemented ptr = X << 8
 
 v1.0.11 (10/27/2023) :
     - Bug fix: Accepts >> 8 on char**

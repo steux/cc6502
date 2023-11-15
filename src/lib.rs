@@ -36,7 +36,13 @@
 // DONE: Bug fix: (x << 4) << 8 != x << 12
 // DONE: Fix 16 bits +=Y
 // DONE: Initialized global data should be const
-
+// DONE: Check (char) >> 8 => 0 (too complex?)
+// DONE: Check X << 8 => too complex ?
+// TODO: Check for (X = 0; X < 10;) { X++ }
+// TODO: Optimize ptr += 16 * 256
+// TODO: Optimize LDA followed by STA (remove STA)
+// TODO: Optimize LDA followed by LDA (remove first LDA)
+//
 mod cpp;
 pub mod error;
 pub mod compile;
@@ -738,6 +744,28 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA j+1\n\tLSR\n\tLSR\n\tLSR\n\tLSR\n\tSTA i"));
+    }
+    
+    #[test]
+    fn right_shift_test5() {
+        let args = sargs(1);
+        let input = "char i; char j; void main() { i = (j >> 8); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #0\n\tSTA i"));
+    }
+    
+    #[test]
+    fn left_shift_test1() {
+        let args = sargs(1);
+        let input = "char *ptr; void main() { ptr = X << 8; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #0\n\tSTA ptr\n\tSTX ptr+1"));
     }
     
     #[test]

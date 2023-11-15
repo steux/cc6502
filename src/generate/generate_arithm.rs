@@ -310,6 +310,9 @@ impl<'a> GeneratorState<'a> {
                                 return Ok(ExprType::Immediate(0));
                             }
                         }
+                        if *value == 8 && *op == Operation::Brs(false) {
+                            return Ok(ExprType::Immediate(0));
+                        }
                     }
                     if acc_in_use { self.sasm(PHA)?; }
                     signed = self.asm(LDA, left, pos, false)?;
@@ -372,11 +375,29 @@ impl<'a> GeneratorState<'a> {
                 }
             },
             ExprType::X => {
+                if let ExprType::Immediate(value) = right {
+                    if *value == 8 && *op == Operation::Bls(false) {
+                        if high_byte {
+                            return Ok(ExprType::X);
+                        } else {
+                            return Ok(ExprType::Immediate(0));
+                        }
+                    }
+                }
                 if acc_in_use { self.sasm(PHA)?; }
                 signed = false;
                 self.sasm(TXA)?;
             },
             ExprType::Y => {
+                if let ExprType::Immediate(value) = right {
+                    if *value == 8 && *op == Operation::Bls(false) {
+                        if high_byte {
+                            return Ok(ExprType::Y);
+                        } else {
+                            return Ok(ExprType::Immediate(0));
+                        }
+                    }
+                }
                 if acc_in_use { self.sasm(PHA)?; }
                 signed = false;
                 self.sasm(TYA)?;
