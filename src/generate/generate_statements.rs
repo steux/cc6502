@@ -424,14 +424,14 @@ impl<'a> GeneratorState<'a> {
                     },
                     Operation::Eq | Operation::Neq | Operation::Gt | Operation::Gte | Operation::Lt | Operation::Lte | Operation::Land | Operation::Lor => self.generate_expr_cond(expr, pos),
                     Operation::Bls(true) | Operation::Brs(true) => {
-                        let left = self.generate_expr(lhs, pos, false, false)?;
-                        let right = self.generate_expr(rhs,pos, false, false)?;
+                        let left = self.generate_expr(lhs, pos, false, second_time)?;
+                        let right = self.generate_expr(rhs,pos, false, second_time)?;
                         let newright = self.generate_shift(&left, op, &right, pos, high_byte)?;
                         self.generate_assign(&left, &newright, pos, false)
                     },
                     Operation::Bls(false) | Operation::Brs(false) => {
-                        let left = self.generate_expr(lhs, pos, false, false)?;
-                        let right = self.generate_expr(rhs, pos, false, false)?;
+                        let left = self.generate_expr(lhs, pos, false, second_time)?;
+                        let right = self.generate_expr(rhs, pos, false, second_time)?;
                         self.generate_shift(&left, op, &right, pos, high_byte)
                     },
                     Operation::TernaryCond1 => self.generate_ternary(lhs, rhs, pos),

@@ -41,6 +41,7 @@
 // DONE: Check for (X = 0; X < 10;) { X++ }
 // DONE: Optimize ptr |= 16 * 256
 // DONE: Optimize ptr = Y | (X << 8)
+// DONE: Bug ptr = Y | (X++ << 8)
 mod cpp;
 pub mod error;
 pub mod compile;
@@ -797,6 +798,17 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("STY main_1_ptr\n\tSTX main_1_ptr+1"));
+    }
+    
+    #[test]
+    fn left_shift_test4() {
+        let args = sargs(1);
+        let input = "void main() { char *ptr = Y | (X++ << 8); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("STY main_1_ptr\n\tSTX main_1_ptr+1\n\tINX"));
     }
     
     #[test]
