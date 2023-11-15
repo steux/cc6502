@@ -357,6 +357,10 @@ impl<'a> CompilerState<'a> {
     {
         let literal_counter = Rc::new(Mutex::new(self.literal_counter));
         let literal_strings = Rc::new(Mutex::new(HashMap::<String, String>::new())); 
+        if pairs.len() == 0 {
+            let lit_strs = Rc::into_inner(literal_strings).unwrap().into_inner().unwrap();
+            return Ok((Expr::Nothing, lit_strs));
+        }
         let res = self.pratt
             .map_primary(|primary| -> Result<Expr, Error> {
                 match primary.as_rule() {

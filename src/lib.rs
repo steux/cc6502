@@ -38,7 +38,7 @@
 // DONE: Initialized global data should be const
 // DONE: Check (char) >> 8 => 0 (too complex?)
 // DONE: Check X << 8 => too complex ?
-// TODO: Check for (X = 0; X < 10;) { X++ }
+// DONE: Check for (X = 0; X < 10;) { X++ }
 // TODO: Optimize ptr += 16 * 256
 // TODO: Optimize LDA followed by STA (remove STA)
 // TODO: Optimize LDA followed by LDA (remove first LDA)
@@ -157,6 +157,17 @@ mod tests {
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA #0\n\tSTA i\n.for1\n.forupdate1\n\tINC i\n\tLDA i\n\tCMP #10\n\tBNE .for1\n.forend1\n"));
+    }
+    
+    #[test]
+    fn for_statement_test3() {
+        let args = sargs(1); 
+        let input = "void main() { for (X = 0; X != 10; ) X++; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX #0\n.for1\n\tINX\n.forupdate1\n\tCPX #10\n\tBNE .for1\n.forend1"));
     }
     
     #[test]
