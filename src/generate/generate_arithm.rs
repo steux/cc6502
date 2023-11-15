@@ -39,12 +39,16 @@ impl<'a> GeneratorState<'a> {
                 left = l; right = r;
             },
             _ => {
-                match r {
-                    ExprType::A(_) => {
-                        left = r; right = l;
-                    },
-                    _ => {
-                        left = l; right = r;
+                if let ExprType::Immediate(_) = l {
+                    left = r; right = l;
+                } else {
+                    match r {
+                        ExprType::A(_) => {
+                            left = r; right = l;
+                        },
+                        _ => {
+                            left = l; right = r;
+                        }
                     }
                 }
             }
@@ -137,11 +141,25 @@ impl<'a> GeneratorState<'a> {
             },
             ExprType::X => {
                 if acc_in_use { self.sasm(PHA)?; }
+                // Optimization in case of or 0
+                if let Operation::Or(_) = op {
+                    if let ExprType::Immediate(v) = right2 {
+                        if !high_byte && (v & 0xff) == 0 { return Ok(ExprType::X); }
+                        else if high_byte && (v & 0xff00) == 0 { return Ok(ExprType::X); }
+                    }
+                }
                 self.sasm(TXA)?;
                 signed = false;
             },
             ExprType::Y => {
                 if acc_in_use { self.sasm(PHA)?; }
+                // Optimization in case of or 0
+                if let Operation::Or(_) = op {
+                    if let ExprType::Immediate(v) = right2 {
+                        if !high_byte && (v & 0xff) == 0 { return Ok(ExprType::Y); }
+                        else if high_byte && (v & 0xff00) == 0 { return Ok(ExprType::Y); }
+                    }
+                }
                 self.sasm(TYA)?;
                 signed = false;
             },
