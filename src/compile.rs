@@ -1657,15 +1657,20 @@ impl<'a> CompilerState<'a> {
                     let mut bank = None;
                     let mut split = str.split('\n');
                     for _ in 0..4 {
-                        let line = split.next().unwrap().trim();
-                        if line.starts_with("; file: ") {
-                            filename = Some(line.split_at(8).1.into()); 
-                        }
-                        if line.starts_with("; codesize: ") {
-                            codesize = line.split_at(12).1.parse::<usize>().ok(); 
-                        }
-                        if line.starts_with("; bank: ") {
-                            bank = line.split_at(8).1.parse::<u8>().ok(); 
+                        let line = split.next();
+                        if line.is_some() {
+                            let line = line.unwrap().trim();
+                            if line.starts_with("; file: ") {
+                                filename = Some(line.split_at(8).1.into()); 
+                            }
+                            if line.starts_with("; codesize: ") {
+                                codesize = line.split_at(12).1.parse::<usize>().ok(); 
+                            }
+                            if line.starts_with("; bank: ") {
+                                bank = line.split_at(8).1.parse::<u8>().ok(); 
+                            }
+                        } else {
+                            break;
                         }
                     }
                     self.included_assembler.push((str.into(), filename, codesize, bank));
