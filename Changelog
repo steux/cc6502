@@ -6,6 +6,7 @@ v1.0.12 (11/10/2023) :
     - Optimized ptr |= 16 * 256
     - Optimized ptr = Y | (X << 8)
     - Corrected Bug ptr = Y | (X++ << 8)
+    - Corrected bug with embedded assembly of less than 4 lines
 
 v1.0.11 (10/27/2023) :
     - Bug fix: Accepts >> 8 on char**
