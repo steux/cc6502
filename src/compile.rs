@@ -202,13 +202,14 @@ pub struct CompilerState<'a> {
     calculator: PrattParser<Rule>,
     mapped_lines: &'a Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>,
     pub preprocessed_utf8: &'a str,
-    pub included_assembler: Vec::<(String, Option<String>, Option<usize>, Option<u8>)>,
+    pub included_assembler: Vec::<(String, Option<String>, Option<usize>, Option<u32>)>,
     pub context: cpp::Context,
     signed_chars: bool,
     literal_counter: usize,
     in_scope_variables: Vec<HashMap<String, String>>,
     current_function: String,
     variable_counter: u32,
+    default_bank: Option<u32>
 }
 
 impl<'a> CompilerState<'a> {
@@ -897,6 +898,7 @@ impl<'a> CompilerState<'a> {
         let mut scattered = None;
         let mut holeydma = false;
         let mut screencode = false;
+        
         for pair in pairs {
             match pair.as_rule() {
                 Rule::var_type => {
@@ -1076,7 +1078,13 @@ impl<'a> CompilerState<'a> {
                                         }
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
-                                            _ => VariableMemory::ROM(0)
+                                            _ => {
+                                                if let Some(bank) = self.default_bank {
+                                                    VariableMemory::ROM(bank)
+                                                } else {
+                                                    VariableMemory::ROM(0)
+                                                }
+                                            }
                                         };
                                         if var_type != VariableType::CharPtr && var_type != VariableType::CharPtrPtr && var_type != VariableType::ShortPtr {
                                             return Err(self.syntax_error("Array definition provided for something not an array", start));
@@ -1643,6 +1651,14 @@ impl<'a> CompilerState<'a> {
     {
         for pair in pairs {
             match pair.as_rule() {
+                Rule::enclosed_decl => {
+                    let mut px = pair.into_inner();
+                    self.default_bank = px.next().unwrap().into_inner().next().unwrap().as_str().parse::<u32>().ok();
+                    for pxx in px {
+                        self.compile_decl(pxx.into_inner())?;
+                    }
+                    self.default_bank = None;
+                },
                 Rule::var_decl => {
                     self.compile_var_decl(pair.into_inner(), true)?;
                 },
@@ -1654,7 +1670,7 @@ impl<'a> CompilerState<'a> {
                     let str = pair.into_inner().next().unwrap().as_str();
                     let mut filename = None;
                     let mut codesize = None;
-                    let mut bank = None;
+                    let mut bank = self.default_bank;
                     let mut split = str.split('\n');
                     for _ in 0..4 {
                         let line = split.next();
@@ -1667,7 +1683,7 @@ impl<'a> CompilerState<'a> {
                                 codesize = line.split_at(12).1.parse::<usize>().ok(); 
                             }
                             if line.starts_with("; bank: ") {
-                                bank = line.split_at(8).1.parse::<u8>().ok(); 
+                                bank = line.split_at(8).1.parse::<u32>().ok(); 
                             }
                         } else {
                             break;
@@ -1826,13 +1842,14 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         pratt, pratt_init_value, calculator,
         mapped_lines: &mapped_lines,
         preprocessed_utf8,
-        included_assembler: Vec::<(String, Option<String>, Option<usize>, Option<u8>)>::new(),
+        included_assembler: Vec::<(String, Option<String>, Option<usize>, Option<u32>)>::new(),
         context,
         signed_chars: args.signed_chars,
         literal_counter: 0,
         in_scope_variables: Vec::new(),
         current_function: String::new(),
-        variable_counter: 0
+        variable_counter: 0,
+        default_bank: None,
     };
 
     let r = Cc2600Parser::parse(Rule::program, preprocessed_utf8);

@@ -1,4 +1,7 @@
-v1.0.12 (11/10/2023) :
+v1.0.13 (2/12/2023) :
+    - Added support for bracketed bank declaration
+
+v1.0.12 (10/11/2023) :
     - Initialized global data should be const
     - Added support for pointer offsets in global array declarations
     - Implemented ptr = X << 8

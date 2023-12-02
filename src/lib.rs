@@ -42,6 +42,10 @@
 // DONE: Optimize ptr |= 16 * 256
 // DONE: Optimize ptr = Y | (X << 8)
 // DONE: Bug ptr = Y | (X++ << 8)
+// TODO: Swap CLC/SEC and STA 
+// TODO: Optimize out AND #255
+// TODO: Push cctmp, X and Y on stack in interrupt routine
+
 mod cpp;
 pub mod error;
 pub mod compile;
