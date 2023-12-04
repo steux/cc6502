@@ -1449,7 +1449,7 @@ impl<'a> CompilerState<'a> {
     fn compile_func_decl(&mut self, pairs: Pairs<'a, Rule>) -> Result<(), Error>
     {
         let mut inline = false;
-        let mut bank = 0u32;
+        let mut bank = self.default_bank.unwrap_or(0);
         let mut return_signed = self.signed_chars;
         let mut return_type = None;
         let mut interrupt = false;
