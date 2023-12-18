@@ -1585,10 +1585,6 @@ impl<'a> CompilerState<'a> {
                                 Rule::id_name => {
                                     shortname = pair.as_str();
                                     longname = format!("{name}_{shortname}"); 
-                                    start = pair.as_span().start();
-                                    if self.variables.get(&longname).is_some() {
-                                        return Err(self.syntax_error(&format!("Variable {} already defined", longname), start));
-                                    }
                                 },
                                 Rule::array_spec => {
                                     start = pair.as_span().start();
