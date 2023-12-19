@@ -1,5 +1,6 @@
 v1.0.14 (12/18/2023) :
-    - Corrected bug wrt prototypes declarations with parameters 
+    - Corrected bug wrt prototypes declarations with parameters
+    - Swap CLC/SEC and LDA to optimize out ADC #0
 
 v1.0.13 (12/02/2023) :
     - Added support for bracketed bank declaration

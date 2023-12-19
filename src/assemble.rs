@@ -239,6 +239,7 @@ impl AssemblyCode {
             let mut remove_both = false;
             let mut remove_first = false;
             let mut remove_second = false;
+            let mut swap_both = false;
             
             // Make sure second points also to an instruction
             loop {
@@ -333,6 +334,9 @@ impl AssemblyCode {
                     }
                     if i2.mnemonic == AsmMnemonic::ORA && i2.dasm_operand == "#0" && !i2.protected {
                         remove_second = true;
+                    }
+                    if i1.mnemonic == AsmMnemonic::LDA && (i2.mnemonic == AsmMnemonic::SEC || i2.mnemonic == AsmMnemonic::CLC) {
+                        swap_both = true;
                     }
                     // Check CMP and remove the branck if the result is obvious
                     if let Some(r) = accumulator {
@@ -472,7 +476,21 @@ impl AssemblyCode {
                 } else { unreachable!(); }
             }
 
-            if remove_both {
+            if swap_both {
+                let tmp1 = if let Some(f) = &first {
+                    (**f).clone()
+                } else { AsmLine::Dummy };
+                let tmp2 = if let Some(f) = &second {
+                    (**f).clone()
+                } else { AsmLine::Dummy };
+                if let Some(f) = &mut first {
+                    (**f) = tmp2;
+                }
+                if let Some(f) = &mut second {
+                    (**f) = tmp1;
+                }
+                accumulator = None;
+            } else if remove_both {
                 *first.unwrap() = AsmLine::Dummy;
                 *second.unwrap() = AsmLine::Dummy;
                 removed_instructions += 2;

@@ -42,7 +42,7 @@
 // DONE: Optimize ptr |= 16 * 256
 // DONE: Optimize ptr = Y | (X << 8)
 // DONE: Bug ptr = Y | (X++ << 8)
-// TODO: Swap CLC/SEC and LDA 
+// DONE: Swap CLC/SEC and LDA 
 // TODO: Optimize out AND #255
 
 mod cpp;
@@ -224,7 +224,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
     }
     
     #[test]
@@ -312,7 +312,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBPL .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+        assert!(result.contains("CLC\n\tLDA j\n\tADC k\n\tSTA i\n\tBPL .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
     }
     
     #[test]
@@ -323,7 +323,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA j\n\tCLC\n\tADC k\n\tSTA i\n\tBMI .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
+        assert!(result.contains("CLC\n\tLDA j\n\tADC k\n\tSTA i\n\tBMI .ifend1\n\tLDA #0\n\tSTA i\n.ifend1"));
     }
     
     #[test]
@@ -422,7 +422,7 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA a\n\tCLC\n\tADC b\n\tPHA\n\tLDA f\n\tSTA e\n\tLDA d\n\tAND e\n\tSTA cctmp\n\tLDA c\n\tCLC\n\tADC cctmp\n\tSTA cctmp\n\tPLA\n\tCLC\n\tADC cctmp\n\tSTA g"));
+        assert!(result.contains("CLC\n\tLDA a\n\tADC b\n\tPHA\n\tLDA f\n\tSTA e\n\tLDA d\n\tAND e\n\tSTA cctmp\n\tCLC\n\tLDA c\n\tADC cctmp\n\tSTA cctmp\n\tPLA\n\tCLC\n\tADC cctmp\n\tSTA g"));
     }
 
     #[test]
@@ -611,7 +611,7 @@ void main()
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
     }
     
     #[test]
@@ -622,7 +622,7 @@ void main()
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tADC x\n\tSTA i\n\tLDA x\n\tORA #127\n\tBMI .ifneg1\n\tLDA #0\n.ifneg1\n\tADC i+1\n\tSTA i+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tADC x\n\tSTA i\n\tLDA x\n\tORA #127\n\tBMI .ifneg1\n\tLDA #0\n.ifneg1\n\tADC i+1\n\tSTA i+1"));
     }
     
     #[test]
@@ -633,7 +633,7 @@ void main()
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tADC #255\n\tSTA i\n\tLDA i+1\n\tADC #255\n\tSTA i+1"));
     }
     
     #[test]
@@ -866,7 +866,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tADC j\n\tSTA k\n\tLDA i+1\n\tADC j+1\n\tSTA k+1"));
     }
     
     #[test]
@@ -877,7 +877,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tSTX cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tSTX cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
     }
     
     #[test]
@@ -888,7 +888,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA i\n\tCLC\n\tSTY cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
+        assert!(result.contains("CLC\n\tLDA i\n\tSTY cctmp\n\tADC cctmp\n\tSTA i\n\tLDA i+1\n\tADC #0\n\tSTA i+1"));
     }
     
     #[test]
@@ -1112,7 +1112,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA a\n\tSEC\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+        assert!(result.contains("SEC\n\tLDA a\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
     } 
     
     #[test]
@@ -1123,7 +1123,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA a\n\tSEC\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifstart1\n\tLDA cctmp\n\tBEQ .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
+        assert!(result.contains("SEC\n\tLDA a\n\tSBC #16\n\tSTA cctmp\n\tLDA a+1\n\tSBC #39\n\tBNE .ifstart1\n\tLDA cctmp\n\tBEQ .ifend1\n.ifstart1\n\tLDX #1\n.ifend1"));
     } 
     
     #[test]
@@ -1189,7 +1189,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("DA #0\n\tSEC\n\tSBC a\n\tSTA a\n\tLDA #0\n\tSBC a+1\n\tSTA a+1"));
+        assert!(result.contains("SEC\n\tLDA #0\n\tSBC a\n\tSTA a\n\tLDA #0\n\tSBC a+1\n\tSTA a+1"));
     } 
     
     #[test]
@@ -1200,7 +1200,7 @@ char i; void main() { i = one; }";
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("LDA #0\n\tSEC\n\tSBC a\n\tSTA a"));
+        assert!(result.contains("SEC\n\tLDA #0\n\tSBC a\n\tSTA a"));
     } 
 
     #[test]
@@ -1503,7 +1503,7 @@ void main() { fn2(); fn3(); }
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tTAX\n\tRTS"));
+        assert!(result.contains("f\tSUBROUTINE\n\tCLC\n\tLDA f_x\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tLDA #0\n\tSTA f_y+1\n\tJSR f\n\tTAX\n\tRTS"));
     }
     
     #[test]
@@ -1514,7 +1514,7 @@ void main() { fn2(); fn3(); }
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains("f\tSUBROUTINE\n\tLDA f_x\n\tCLC\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tSTX main_1_x\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA main_1_y\n\tRTS"));
+        assert!(result.contains("f\tSUBROUTINE\n\tCLC\n\tLDA f_x\n\tADC f_y\n\tRTS\n\tRTS\n\nmain\tSUBROUTINE\n\tSTX main_1_x\n\tLDA #1\n\tSTA f_x\n\tLDA #2\n\tSTA f_y\n\tJSR f\n\tSTA main_1_y\n\tRTS"));
     }
 
     #[test]
@@ -1582,4 +1582,16 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("LDA #1\n\tSTA main_1_charz"));
     }
+    
+    #[test]
+    fn add_test1() {
+        let args = sargs(1); 
+        let input = "void main() { short int a; a += 0x100; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("CLC\n\tLDA main_1_a+1\n\tADC #1\n\tSTA main_1_a+1\n\tRTS"));
+    } 
+    
 }
