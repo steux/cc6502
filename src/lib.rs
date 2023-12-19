@@ -43,7 +43,7 @@
 // DONE: Optimize ptr = Y | (X << 8)
 // DONE: Bug ptr = Y | (X++ << 8)
 // DONE: Swap CLC/SEC and LDA 
-// TODO: Optimize out AND #255
+// DONE: Optimize out AND #255
 
 mod cpp;
 pub mod error;
@@ -1592,6 +1592,17 @@ void main() { fn2(); fn3(); }
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("CLC\n\tLDA main_1_a+1\n\tADC #1\n\tSTA main_1_a+1\n\tRTS"));
+    } 
+    
+    #[test]
+    fn and_16bits_test() {
+        let args = sargs(1); 
+        let input = "void main() { char *ptr; ptr &= 0x1ff; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA main_1_ptr+1\n\tAND #1\n\tSTA main_1_ptr+1"));
     } 
     
 }

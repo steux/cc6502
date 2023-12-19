@@ -212,10 +212,10 @@ impl<'a> GeneratorState<'a> {
             ExprType::Immediate(v) => {
                 if !high_byte && operation == ADC && *v & 0xff == 0 {
                     // Do not insert the ADD #0 instruction
-                } else if high_byte || operation != AND || *v != 0xff {
+                } else if high_byte || operation != AND || *v & 0xff != 0xff {
                     if *v != 0 || operation == AND || high_byte { 
                         self.asm(operation, right2, pos, high_byte)?; 
-                    };
+                    }
                 }
             },
             ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) => {
