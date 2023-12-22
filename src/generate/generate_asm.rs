@@ -245,14 +245,7 @@ impl<'a> GeneratorState<'a> {
                         }
                         cycles += 2;
                         if v.memory == VariableMemory::Zeropage {
-                            match mnemonic {
-                                STA | LDA => {
-                                    nb_bytes = 3;
-                                },
-                                _ => {
-                                    nb_bytes = 2;
-                                }
-                            }
+                            nb_bytes = 2;
                         } else {
                             nb_bytes = 3;
                         }
@@ -291,11 +284,11 @@ impl<'a> GeneratorState<'a> {
                     cycles += 2;
                     if v.memory == VariableMemory::Zeropage {
                         match mnemonic {
-                            STA | LDA => {
-                                nb_bytes = 3;
+                            STX | LDX => {
+                                nb_bytes = 2;
                             },
                             _ => {
-                                nb_bytes = 2;
+                                nb_bytes = 3;
                             }
                         }
                     } else {
@@ -340,11 +333,11 @@ impl<'a> GeneratorState<'a> {
                     cycles += 2;
                     if v.memory == VariableMemory::Zeropage {
                         match mnemonic {
-                            STA | LDA => {
-                                nb_bytes = 3;
+                            STX | LDX => {
+                                nb_bytes = 2;
                             },
                             _ => {
-                                nb_bytes = 2;
+                                nb_bytes = 3;
                             }
                         }
                     } else {
