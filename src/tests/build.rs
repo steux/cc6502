@@ -261,7 +261,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
                                         _ => unreachable!()
                                     };
                                     gstate.write(&format!("{:23}\tds {}\n", vx, v.size * s))?; 
-                                    bsize += v.size * 2;
+                                    bsize += v.size * s;
                                 } else {
                                     let s = match v.var_type {
                                         VariableType::Char => 1,
