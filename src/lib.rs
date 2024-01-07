@@ -444,7 +444,18 @@ mod tests {
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains(".while1inline1\n\tCPY #0\n\tBEQ .whileend1inline1\n\tDEY\n\tJMP .while1inline1\n.whileend1inline1\n.while1inline2\n\tCPY #0\n\tBEQ .whileend1inline2\n\tDEY\n\tJMP .while1inline2\n.whileend1inline2"));
+        assert!(result.contains(".while1inline1\n\tCPY #0\n\tBEQ .whileend1inline1\n\tDEY\n\tJMP .while1inline1\n.whileend1inline1\n.endofinline1\n.while1inline2\n\tCPY #0\n\tBEQ .whileend1inline2\n\tDEY\n\tJMP .while1inline2\n.whileend1inline2\n.endofinline2"));
+    }
+
+    #[test]
+    fn inline_test3() {
+        let args = sargs(1);
+        let input = "inline char w() { if (Y) return 1; return 0; }; void main() { X = w(); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("CPY #0\n\tBEQ .ifend1inline1\n\tLDA #1\n\tJMP .endofinline1\n.ifend1inline1\n\tLDA #0\n.endofinline1\n\tTAX\n"));
     }
 
     #[test]

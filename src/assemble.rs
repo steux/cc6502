@@ -241,6 +241,24 @@ impl AssemblyCode {
             let mut remove_second = false;
             let mut swap_both = false;
             
+            if let Some(AsmLine::Instruction(i1)) = &first {
+                if let Some(AsmLine::Label(l)) = &second {
+                    if i1.mnemonic == AsmMnemonic::JMP && &i1.dasm_operand == l && !i1.protected {
+                        *first.unwrap() = AsmLine::Dummy;
+                        removed_instructions += 1;
+                        first = second;
+                        loop {
+                            match &first {
+                                None => return removed_instructions,
+                                Some(AsmLine::Instruction(_)) => break,
+                                _ => first = iter.next(),
+                            }
+                        }
+                        second = iter.next();
+                    }
+                }
+            }
+
             // Make sure second points also to an instruction
             loop {
                 match &second {

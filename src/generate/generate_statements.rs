@@ -679,12 +679,17 @@ impl<'a> GeneratorState<'a> {
                     }
                 }
             }
+            if f.inline {
+                self.asm(JMP, &ExprType::Label(".endof".into()), 0, false)?;
+            } else {
+                self.sasm(RTS)?;
+            }
+            self.acc_in_use = false;
+            self.tmp_in_use = false;
         } else {
             unreachable!();
         }
-        self.sasm(RTS)?;
-        self.acc_in_use = false;
-        self.tmp_in_use = false;
+        
         Ok(())
     }
 

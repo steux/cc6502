@@ -490,6 +490,7 @@ impl<'a> GeneratorState<'a> {
             };
             let code : &mut AssemblyCode = self.functions_code.get_mut(fx).unwrap();
             code.append_code(&code2, self.inline_label_counter);
+            code.append_label(format!(".endofinline{}", self.inline_label_counter))
         }
         Ok(()) 
     }
