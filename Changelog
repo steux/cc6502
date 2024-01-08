@@ -1,5 +1,6 @@
 v1.0.15 (01/07/2024) :
     - Corrected bug when returning values with inline functions
+    - Added support for constant address in array of pointers
 
 v1.0.14 (12/18/2023) :
     - Corrected bug wrt prototypes declarations with parameters

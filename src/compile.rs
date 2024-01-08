@@ -1160,6 +1160,7 @@ impl<'a> CompilerState<'a> {
                                             let mut v = Vec::new();
                                             for pxx in px.into_inner() {
                                                 match pxx.as_rule() {
+                                                    Rule::calc_expr => v.push(("__address__".into(), self.parse_calc(pxx.into_inner())? as usize)),
                                                     Rule::var_ptr => {
                                                         let mut pxxx = pxx.into_inner();
                                                         let s = pxxx.next().unwrap().as_str().to_string();
