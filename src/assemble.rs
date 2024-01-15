@@ -309,6 +309,10 @@ impl AssemblyCode {
                     if i1.mnemonic == AsmMnemonic::PLA && i2.mnemonic == AsmMnemonic::PHA && !i1.protected && !i2.protected {
                         remove_both = true;
                     }
+                    // Remove JMP followed by JMP
+                    if i1.mnemonic == AsmMnemonic::JMP && i2.mnemonic == AsmMnemonic::JMP && !i1.protected && !i2.protected {
+                        remove_second = true;
+                    }
                     // Remove STA followed by LDA
                     if i1.mnemonic == AsmMnemonic::STA && i2.mnemonic == AsmMnemonic::LDA && i1.dasm_operand == i2.dasm_operand && !i2.protected {
                         remove_second = true;
