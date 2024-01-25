@@ -173,6 +173,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
             if f.1.bank != 0 {
                 nb_banked_functions += 1;
             }
+            gstate.current_bank = f.1.bank;
 
             gstate.local_label_counter_for = 0;
             gstate.local_label_counter_if = 0;

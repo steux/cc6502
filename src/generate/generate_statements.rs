@@ -159,7 +159,7 @@ impl<'a> GeneratorState<'a> {
                                     }
                                 }
 
-                                debug!("Function call from bank #{}; {:?}", self.current_bank, &f);
+                                debug!("Function call from bank #{}; {}", self.current_bank, var);
                                 if f.interrupt {
                                     return Err(self.compiler_state.syntax_error("Can't call an interrupt routine", pos))
                                 }

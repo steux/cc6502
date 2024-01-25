@@ -44,6 +44,7 @@
 // DONE: Bug ptr = Y | (X++ << 8)
 // DONE: Swap CLC/SEC and LDA 
 // DONE: Optimize out AND #255
+// TODO: Indicate error line when compiler error not implemented
 
 mod cpp;
 pub mod error;
