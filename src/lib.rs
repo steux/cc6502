@@ -45,6 +45,7 @@
 // DONE: Swap CLC/SEC and LDA 
 // DONE: Optimize out AND #255
 // TODO: Indicate error line when compiler error not implemented
+// DONE: 16 bits inc produces incorrect core for ramchip
 
 mod cpp;
 pub mod error;

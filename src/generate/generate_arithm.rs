@@ -514,10 +514,11 @@ impl<'a> GeneratorState<'a> {
             },
             ExprType::Absolute(variable, eight_bits, offset) => {
                 let v = self.compiler_state.get_variable(variable);
+                let superchip;
                 let use_inc = match v.memory {
 #[cfg(feature = "atari2600")]
-                    VariableMemory::Superchip | VariableMemory::MemoryOnChip(_) => false,
-                    _ => *eight_bits,
+                    VariableMemory::Superchip | VariableMemory::MemoryOnChip(_) => { superchip = true; false },
+                    _ => { superchip = false; *eight_bits},
                 }; 
                 if use_inc {
                     self.asm(operation, expr_type, pos, false)?;
@@ -526,7 +527,7 @@ impl<'a> GeneratorState<'a> {
                     Ok(ExprType::Absolute(variable.clone(), *eight_bits, *offset))
                 } else {
                     // Implment optimization for inc on pointers
-                    if v.var_type == VariableType::Short || (v.var_type == VariableType::CharPtr && !eight_bits) {
+                    if !superchip && (v.var_type == VariableType::Short || (v.var_type == VariableType::CharPtr && !eight_bits)) {
 // Implement optimized 16 bits increment:
 //        inc     ptr
 //        bne     :+
