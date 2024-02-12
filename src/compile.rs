@@ -1857,14 +1857,28 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
             let line;
             ex.line_col = match e.line_col {
                 LineColLocation::Pos((l, c)) => {
-                    filename = mapped_lines[l - 1].0.clone();
-                    line = mapped_lines[l - 1].1;
-                    LineColLocation::Pos((mapped_lines[l - 1].1 as usize, c))
+                    if l - 1 < mapped_lines.len() {
+                        filename = mapped_lines[l - 1].0.clone();
+                        line = mapped_lines[l - 1].1;
+                        LineColLocation::Pos((mapped_lines[l - 1].1 as usize, c))
+                    } else {
+                        let l = mapped_lines.len();
+                        filename = mapped_lines[l - 1].0.clone();
+                        line = mapped_lines[l - 1].1;
+                        LineColLocation::Pos((mapped_lines[l - 1].1 as usize, c))
+                    }
                 },
                 LineColLocation::Span((l1, c1), (l2, c2)) => {
-                    filename = mapped_lines[l1 - 1].0.clone();
-                    line = mapped_lines[l1 - 1].1;
-                    LineColLocation::Span((mapped_lines[l1 - 1].1 as usize, c1), (mapped_lines[l2 - 1].1 as usize, c2))
+                    if l1 - 1 < mapped_lines.len() {
+                        filename = mapped_lines[l1 - 1].0.clone();
+                        line = mapped_lines[l1 - 1].1;
+                        LineColLocation::Span((mapped_lines[l1 - 1].1 as usize, c1), (mapped_lines[l2 - 1].1 as usize, c2))
+                    } else {
+                        let l1 = mapped_lines.len();
+                        filename = mapped_lines[l1 - 1].0.clone();
+                        line = mapped_lines[l1 - 1].1;
+                        LineColLocation::Span((mapped_lines[l1 - 1].1 as usize, c1), (mapped_lines[l2 - 1].1 as usize, c2))
+                    }
                 },
             };
             eprintln!("{}", ex);
