@@ -507,7 +507,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     }
                 } 
             },
-            _ => { return Err(Error::Unimplemented { feature: "condition statement is partially implemented" }); },
+            _ => { return Err(self.compiler_state.compiler_error("Condition statement is partially implemented", pos)); },
         }
 
         if cmp {
@@ -696,7 +696,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.asm(LDA, &expr, pos, false)?;
                     self.tmp_in_use = false;
                 },
-                _ => return Err(Error::Unimplemented { feature: "condition statement is partially implemented" })
+                _ => return Err(self.compiler_state.compiler_error("Condition statement is partially implemented", pos))
             }
 
             if negate {

@@ -2,6 +2,7 @@ v1.0.17 (02/01/2024) :
     - Bug correction : 16 bits inc produces incorrect core for ramchip
     - Bug correction : panic when statement missing at the end of source code
     - Added support for comparison with immediate on left hand side
+    - Indicate error line when compiler error not implemented
 
 v1.0.16 (01/15/2024) :
     - Optimized out JMP followed by JMP 

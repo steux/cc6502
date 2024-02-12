@@ -84,7 +84,7 @@ impl<'a> GeneratorState<'a> {
                             Operation::Xor(_) => return Ok(ExprType::Immediate(l ^ r)),
                             Operation::Mul(_) => return Ok(ExprType::Immediate(l * r)),
                             Operation::Div(_) => return Ok(ExprType::Immediate(l / r)),
-                            _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
+                            _ => { return Err(self.compiler_state.compiler_error("Arithmetics is partially implemented", pos)); },
                         } 
                     },
                     _ => {
@@ -167,7 +167,7 @@ impl<'a> GeneratorState<'a> {
                 acc_in_use = false;
                 signed = *s;
             },
-            _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
+            _ => { return Err(self.compiler_state.compiler_error("Arithmetics is partially implemented", pos)); },
         }
         self.acc_in_use = true;
         let operation = match op {
@@ -206,7 +206,7 @@ impl<'a> GeneratorState<'a> {
             },
             Operation::Mul(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a multiplier.", pos)) },
             Operation::Div(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a divider.", pos)) },
-            _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
+            _ => { return Err(self.compiler_state.compiler_error("Arithmetics is partially implemented", pos)); },
         };
         match right2 {
             ExprType::Immediate(v) => {
@@ -239,7 +239,7 @@ impl<'a> GeneratorState<'a> {
                 self.asm(operation, right2, pos, high_byte)?;
                 self.tmp_in_use = false;
             },
-            _ => { return Err(Error::Unimplemented { feature: "arithmetics is partially implemented" }); },
+            _ => { return Err(self.compiler_state.compiler_error("Arithmetics is partially implemented", pos)); },
         };
         if acc_in_use {
             self.asm(STA, &ExprType::Tmp(false), pos, high_byte)?;

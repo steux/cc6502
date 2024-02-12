@@ -248,6 +248,24 @@ impl<'a> CompilerState<'a> {
         }
     }
 
+    pub fn compiler_error(&self, message: &str, loc: usize) -> Error
+    {
+        let mut line_number: usize = 0;
+        let mut char_number = 0;
+        for c in self.preprocessed_utf8.chars() {
+            if c == '\n' { line_number += 1; }
+            char_number += 1;
+            if char_number == loc { break; }
+        }
+        let included_in = self.mapped_lines[line_number].2.as_ref().map(|iin| (iin.0.to_string(), iin.1));
+        Error::Compiler {
+            filename: self.mapped_lines[line_number].0.to_string(),
+            line: self.mapped_lines[line_number].1,
+            included_in,
+            msg: message.to_string()
+        }
+    }
+
     pub fn warning(&self, msg: &str, loc: usize) -> () 
     {
         let mut line_number: usize = 0;
