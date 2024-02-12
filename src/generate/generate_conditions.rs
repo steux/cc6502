@@ -292,6 +292,10 @@ impl<'a, 'b> GeneratorState<'a> {
                 left = l; right = r;
                 false
             }, 
+            ExprType::Immediate(_) => {
+                left = r; right = l;
+                true 
+            },
             _ => match &r {
                 ExprType::A(_) | ExprType::X | ExprType::Y => {
                     left = r; right = l;
@@ -377,9 +381,8 @@ impl<'a, 'b> GeneratorState<'a> {
                             };
                             if self.carry_flag_ok {
                                 return self.generate_branch_instruction(&operator, signed, label);
-                            } else {
-                                return self.generate_branch_instruction_alt(&operator, signed, label);
                             }
+                            return self.generate_branch_instruction_alt(&operator, signed, label);
                         } 
                     }
                 } 
@@ -543,7 +546,7 @@ impl<'a, 'b> GeneratorState<'a> {
 
     pub(crate) fn generate_condition(&mut self, condition: &Expr, pos: usize, negate: bool, label: &str, immediate_special: bool) -> Result<Option<bool>, Error>
     {
-        //debug!("Condition: {:?}", condition);
+        debug!("Condition: {:?}", condition);
         match condition {
             Expr::BinOp {lhs, op, rhs} => {
                 if match op {
