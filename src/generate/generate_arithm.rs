@@ -579,9 +579,70 @@ impl<'a> GeneratorState<'a> {
                 }
             },
             ExprType::AbsoluteX(variable) => {
-                self.asm(operation, expr_type, pos, false)?;
-                self.flags = FlagsState::AbsoluteX(variable.clone());
-                Ok(ExprType::AbsoluteX(variable.clone()))
+                let v = self.compiler_state.get_variable(variable);
+                let superchip;
+                let use_inc = match v.memory {
+#[cfg(feature = "atari2600")]
+                    VariableMemory::Superchip | VariableMemory::MemoryOnChip(_) => { superchip = true; false },
+                    _ => { superchip = false; !(v.var_type == VariableType::Short || v.var_type == VariableType::CharPtrPtr || v.var_type == VariableType::ShortPtr)},
+                }; 
+                if use_inc {
+                    self.asm(operation, expr_type, pos, false)?;
+                    self.flags = FlagsState::AbsoluteX(variable.clone());
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::AbsoluteX(variable.clone()))
+                } else {
+                    // Implement optimization for inc on pointers
+                    if !superchip && (v.var_type == VariableType::CharPtrPtr || v.var_type == VariableType::ShortPtr) {
+// Implement optimized 16 bits increment:
+//        inc     ptr
+//        bne     :+
+//        inc     ptr+1
+//+       rts
+                        if plusplus {
+                            self.local_label_counter_if += 1;
+                            let ifend_label = format!(".ifend{}", self.local_label_counter_if);
+                            self.asm(INC, expr_type, pos, false)?;
+                            self.asm(BNE, &ExprType::Label(ifend_label.clone()), 0, false)?;
+                            self.asm(INC, expr_type, pos, true)?;
+                            self.label(&ifend_label)?;
+                            self.flags = FlagsState::AbsoluteX(variable.clone());
+                            self.carry_flag_ok = false;
+                        } else {
+// Decrement :
+//      LDA NUML
+//      BNE LABEL
+//      DEC NUMH
+//LABEL DEC NUML 
+                            self.local_label_counter_if += 1;
+                            let ifend_label = format!(".ifend{}", self.local_label_counter_if);
+                            if self.acc_in_use {
+                                self.sasm(PHA)?; 
+                            }
+                            self.asm(LDA, expr_type, pos, false)?;
+                            self.asm(BNE, &ExprType::Label(ifend_label.clone()), 0, false)?;
+                            self.asm(DEC, expr_type, pos, true)?;
+                            self.label(&ifend_label)?;
+                            self.asm(DEC, expr_type, pos, false)?;
+                            self.flags = FlagsState::Unknown;
+                            self.carry_flag_ok = false;
+                            if self.acc_in_use {
+                                self.sasm(PLA)?; 
+                            }
+                        }
+                        Ok(ExprType::AbsoluteX(variable.clone()))
+                    } else {
+                        let op = if plusplus { Operation::Add(false) } else { Operation::Sub(false) };
+                        let right = ExprType::Immediate(1);
+                        let newright = self.generate_arithm(expr_type, &op, &right, pos, false)?;
+                        let ret = self.generate_assign(expr_type, &newright, pos, false);
+                        if v.var_type == VariableType::Short || v.var_type == VariableType::CharPtr || v.var_type == VariableType::ShortPtr {
+                            let newright = self.generate_arithm(expr_type, &op, &right, pos, true)?;
+                            self.generate_assign(expr_type, &newright, pos, true)?;
+                        }
+                        ret
+                    }
+                }
             },
             ExprType::AbsoluteY(_) => {
                 let op = if plusplus { Operation::Add(false) } else { Operation::Sub(false) };

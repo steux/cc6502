@@ -1,3 +1,6 @@
+V1.0.18 (02/16/2024) :
+    - Bug corrected wrt indexed by X variables increment
+
 v1.0.17 (02/01/2024) :
     - Bug correction : 16 bits inc produces incorrect core for ramchip
     - Bug correction : panic when statement missing at the end of source code

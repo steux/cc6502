@@ -46,6 +46,7 @@
 // DONE: Optimize out AND #255
 // DONE: Indicate error line when compiler error not implemented
 // DONE: 16 bits inc produces incorrect core for ramchip
+// TODO: Implement function pointers
 
 mod cpp;
 pub mod error;
@@ -1616,6 +1617,50 @@ void main() { fn2(); fn3(); }
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA main_1_ptr+1\n\tAND #1\n\tSTA main_1_ptr+1"));
+    } 
+    
+    #[test]
+    fn inc_16bits_test() {
+        let args = sargs(1); 
+        let input = "void main() { char *ptr; ptr++; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("INC main_1_ptr\n\tBNE .ifend1\n\tINC main_1_ptr+1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn inc_16bits_test2() {
+        let args = sargs(1); 
+        let input = "void main() { short i; i++; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("INC main_1_i\n\tBNE .ifend1\n\tINC main_1_i+1\n.ifend1"));
+    } 
+    
+    #[test]
+    fn inc_16bits_test3() {
+        let args = sargs(1); 
+        let input = "char ptr[10]; void main() { ptr[X]++; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("INC ptr,X"));
+    } 
+    
+    #[test]
+    fn inc_16bits_test4() {
+        let args = sargs(1); 
+        let input = "short ptr[10]; void main() { ptr[X]++; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("INC ptr,X\n\tBNE .ifend1\n\tINC ptr+10,X\n.ifend1"));
     } 
     
 }
