@@ -636,7 +636,7 @@ impl<'a> GeneratorState<'a> {
                         let right = ExprType::Immediate(1);
                         let newright = self.generate_arithm(expr_type, &op, &right, pos, false)?;
                         let ret = self.generate_assign(expr_type, &newright, pos, false);
-                        if v.var_type == VariableType::Short || v.var_type == VariableType::CharPtr || v.var_type == VariableType::ShortPtr {
+                        if v.var_type == VariableType::CharPtrPtr || v.var_type == VariableType::ShortPtr {
                             let newright = self.generate_arithm(expr_type, &op, &right, pos, true)?;
                             self.generate_assign(expr_type, &newright, pos, true)?;
                         }
