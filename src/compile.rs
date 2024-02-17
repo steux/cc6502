@@ -200,7 +200,7 @@ pub struct CompilerState<'a> {
     pratt: PrattParser<Rule>,
     pratt_init_value: PrattParser<Rule>,
     calculator: PrattParser<Rule>,
-    mapped_lines: &'a Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>,
+    pub mapped_lines: &'a Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>,
     pub preprocessed_utf8: &'a str,
     pub included_assembler: Vec::<(String, Option<String>, Option<usize>, Option<u32>)>,
     pub context: cpp::Context,

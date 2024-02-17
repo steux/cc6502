@@ -780,7 +780,8 @@ impl<'a> GeneratorState<'a> {
         // debug!("{:?}, {}, {}, {}", expr, pos, self.last_included_position, self.last_included_line_number);
         if self.insert_code {
             let included_source_code = self.generate_included_source_code_line(code.pos);
-            let line_to_be_written = included_source_code.map(|line| line.to_string());
+            let line_number = self.compiler_state.mapped_lines[self.last_included_line_number].1 - 1;
+            let line_to_be_written = included_source_code.map(|line| format!("(l.{line_number}) {line}"));
             // debug!("{:?}, {}, {}", line_to_be_written, self.last_included_position, self.last_included_line_number);
             if let Some(l) = line_to_be_written {
                 // Replace series of whitespaces by a single whitespace

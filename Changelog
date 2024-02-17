@@ -1,5 +1,6 @@
 V1.0.18 (02/16/2024) :
     - Bug corrected wrt indexed by X variables increment
+    - Added line numbers in inserted code (easier debugging)
 
 v1.0.17 (02/01/2024) :
     - Bug correction : 16 bits inc produces incorrect core for ramchip
