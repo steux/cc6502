@@ -47,7 +47,8 @@
 // DONE: Indicate error line when compiler error not implemented
 // DONE: 16 bits inc produces incorrect core for ramchip
 // TODO: Implement function pointers
-
+// TODO: Implement new "nopagecross" keyword
+//
 mod cpp;
 pub mod error;
 pub mod compile;
