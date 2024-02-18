@@ -725,32 +725,32 @@ impl<'a> GeneratorState<'a> {
     fn generate_csleep_statement(&mut self, cycles: i32, pos: usize) -> Result<(), Error>
     {
         match cycles {
-            2 => self.sasm(NOP)?,
+            2 => self.sasm_protected(NOP)?,
             3 => self.asm(STA, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?,
             4 => {
-                self.sasm(NOP)?;
-                self.sasm(NOP)?
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?
             },
             5 => self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?,
             6 => {
-                self.sasm(NOP)?;
-                self.sasm(NOP)?;
-                self.sasm(NOP)?
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?
             },
             7 => {
                 self.sasm_protected(PHA)?;
                 self.sasm_protected(PLA)?
             },
             8 => {
-                self.sasm(NOP)?;
-                self.sasm(NOP)?;
-                self.sasm(NOP)?;
-                self.sasm(NOP)?
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?
             },
             9 => {
                 self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?;
-                self.sasm(NOP)?;
-                self.sasm(NOP)?
+                self.sasm_protected(NOP)?;
+                self.sasm_protected(NOP)?
             },
             10 => {
                 self.asm(DEC, &ExprType::Absolute("DUMMY".into(), true, 0), pos, false)?;
