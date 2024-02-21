@@ -1,7 +1,7 @@
 V1.0.19 (02/16/2024) :
     - Added protection to clseep nops 
 
-V1.0.18 (02/16/2024) :
+v1.0.18 (02/16/2024) :
     - Bug corrected wrt indexed by X variables increment
     - Added line numbers in inserted code (easier debugging)
 
