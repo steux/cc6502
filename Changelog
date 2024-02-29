@@ -1,3 +1,6 @@
+V1.0.20 (02/29/2024) :
+    - Optimized away useless loads 
+
 V1.0.19 (02/16/2024) :
     - Added protection to clseep nops 
 

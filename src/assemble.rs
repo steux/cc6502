@@ -1,6 +1,6 @@
 /*
     cc6502 - a subset of C compiler for the 6502 processor
-    Copyright (C) 2023 Bruno STEUX
+    Copyright (C) 2023-2024 Bruno STEUX
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

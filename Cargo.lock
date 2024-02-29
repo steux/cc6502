@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "cc6502"
-version = "1.0.19"
+version = "1.0.20"
 dependencies = [
  "clap",
  "env_logger",
