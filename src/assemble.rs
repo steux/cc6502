@@ -436,56 +436,62 @@ impl AssemblyCode {
                     }
                     // Check CMP and remove the branck if the result is obvious
                     if let Some(r) = &accumulator {
-                        if i1.mnemonic == AsmMnemonic::CMP && i1.dasm_operand.starts_with('#') {
-                            // The result IS obvious
-                            match i2.mnemonic {
-                                AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
-                                        remove_both = true;
+                        if r.starts_with("#") {
+                            if i1.mnemonic == AsmMnemonic::CMP && i1.dasm_operand.starts_with('#') {
+                                // The result IS obvious
+                                match i2.mnemonic {
+                                    AsmMnemonic::BNE => {
+                                        if *r == i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
-                                }
-                                AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
-                                        remove_both = true;
+                                    AsmMnemonic::BEQ => {
+                                        if *r != i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
+                                    _ => (),
                                 }
-                                _ => (),
                             }
                         }
                     }
                     if let Some(r) = &x_register {
-                        if i1.mnemonic == AsmMnemonic::CPX && i1.dasm_operand.starts_with('#') {
-                            // The result IS obvious
-                            match i2.mnemonic {
-                                AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
-                                        remove_both = true;
+                        if r.starts_with("#") {
+                            if i1.mnemonic == AsmMnemonic::CPX && i1.dasm_operand.starts_with('#') {
+                                // The result IS obvious
+                                match i2.mnemonic {
+                                    AsmMnemonic::BNE => {
+                                        if *r == i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
-                                }
-                                AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
-                                        remove_both = true;
+                                    AsmMnemonic::BEQ => {
+                                        if *r != i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
+                                    _ => (),
                                 }
-                                _ => (),
                             }
                         }
                     }
                     if let Some(r) = &y_register {
-                        if i1.mnemonic == AsmMnemonic::CPY && i1.dasm_operand.starts_with('#') {
-                            // The result IS obvious
-                            match i2.mnemonic {
-                                AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
-                                        remove_both = true;
+                        if r.starts_with("#") {
+                            if i1.mnemonic == AsmMnemonic::CPY && i1.dasm_operand.starts_with('#') {
+                                // The result IS obvious
+                                match i2.mnemonic {
+                                    AsmMnemonic::BNE => {
+                                        if *r == i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
-                                }
-                                AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
-                                        remove_both = true;
+                                    AsmMnemonic::BEQ => {
+                                        if *r != i1.dasm_operand {
+                                            remove_both = true;
+                                        }
                                     }
+                                    _ => (),
                                 }
-                                _ => (),
                             }
                         }
                     }
@@ -606,6 +612,23 @@ impl AssemblyCode {
                         }
                         AsmMnemonic::TYA => {
                             accumulator = y_register.clone();
+                        }
+                        AsmMnemonic::STA | AsmMnemonic::STX | AsmMnemonic::STY => {
+                            if let Some(v) = &accumulator {
+                                if !v.starts_with("#") {
+                                    accumulator = None;
+                                }
+                            }
+                            if let Some(v) = &x_register {
+                                if !v.starts_with("#") {
+                                    x_register = None;
+                                }
+                            }
+                            if let Some(v) = &y_register {
+                                if !v.starts_with("#") {
+                                    y_register = None;
+                                }
+                            }
                         }
                         AsmMnemonic::ADC
                         | AsmMnemonic::SBC
