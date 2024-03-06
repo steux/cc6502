@@ -42,6 +42,7 @@ pub enum AsmMnemonic {
     ORA,
     LSR,
     ASL,
+    ROL,
     ROR,
     CLC,
     SEC,

@@ -48,10 +48,11 @@
 // DONE: 16 bits inc produces incorrect core for ramchip
 // TODO: Implement function pointers
 // TODO: Implement new "nopagecross" keyword
-// TODO: Implement warnings for constants not fitting in 8 bits
+// DONE: Implement warnings for constants not fitting in 8 bits
 // TODO: Optimize out LDAs separated by cmp and branches
-// TODO: Implement 16 bits right shift
-// TODO: Forbit use of arrays of arrays of pointers (arrays of CharCharPtr)
+// DONE: Implement 16 bits shifting
+// TODO: Forbid use of arrays of arrays of pointers (arrays of CharCharPtr)
+
 pub mod assemble;
 pub mod compile;
 mod cpp;
@@ -1720,5 +1721,50 @@ void main() { fn2(); fn3(); }
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("INC ptr,X\n\tBNE .ifend1\n\tINC ptr+10,X\n.ifend1"));
+    }
+
+    #[test]
+    fn shift_16bits_test1() {
+        let args = sargs(1);
+        let input = "short a; void main() { a <<= 2; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("ASL a\n\tROL a+1\n\tASL a\n\tROL a+1"));
+    }
+
+    #[test]
+    fn shift_16bits_test2() {
+        let args = sargs(1);
+        let input = "short a; void main() { a >>= 2; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result
+            .contains("LDA a+1\n\tASL\n\tROR a+1\n\tROR a\n\tLDA a+1\n\tASL\n\tROR a+1\n\tROR a"));
+    }
+
+    #[test]
+    fn shift_16bits_test3() {
+        let args = sargs(1);
+        let input = "unsigned short a; void main() { a >>= 2; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LSR a+1\n\tROR a\n\tLSR a+1\n\tROR a"));
+    }
+
+    #[test]
+    fn shift_16bits_test4() {
+        let args = sargs(1);
+        let input = "short ptr[10]; void main() { ptr[X] <<= 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("ASL ptr,X\n\tROL ptr+10,X"));
     }
 }

@@ -24,12 +24,13 @@ program      =   { SOI ~ decl+ ~ EOI }
 
 decl = { enclosed_decl 
        | var_decl
+       | func_vec_decl
        | func_decl 
        | included_assembler
        }
 enclosed_decl = { bank ~ "{" ~ decl+ ~ "}" }
 var_decl = { var_type ~ global_id ~ ("," ~ global_id)* ~ ";"+ }
-var_type = ${ ((var_const | superchip | ramchip | bank | aligned | display | frequency | reversed | scattered | holeydma | screencode) ~ WHITESPACE+ )* ~ (var_sign ~ WHITESPACE+)? ~ var_simple_type ~ WHITESPACE+ }
+var_type = ${ ((var_const | superchip | ramchip | bank | aligned | display | frequency | reversed | scattered | holeydma | screencode | nopagecross) ~ WHITESPACE+ )* ~ (var_sign ~ WHITESPACE+)? ~ var_simple_type ~ WHITESPACE+ }
 local_var_decl = { local_var_decl_const | local_var_decl_mut }
 local_var_decl_const = { "const" ~ var_type ~ global_id ~ ("," ~ global_id)* ~ ";" }
 local_var_decl_mut = { local_var_type ~ local_id ~ ("," ~ local_id)* ~ ";" }
@@ -46,6 +47,7 @@ reversed = { "reversed" }
 scattered = { "scattered" ~ "(" ~ calc_expr ~ "," ~ calc_expr ~ ")" }
 holeydma = { "holeydma" }
 screencode = { "screencode" }
+nopagecross = { "nopagecross" }
 id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 global_id = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
 local_id = { pointer* ~ id_name ~ array_spec? ~ ("=" ~ expr_init_value)? }
@@ -58,6 +60,7 @@ ptr_low = { "&" ~ calc_expr }
 ptr_offset = { "+" ~ int }
 pointer = { "*" }
 
+func_vec_decl = { "void" ~ "(*" ~ id_name ~ array_spec ~ ")()" ~ "=" ~ var_def }
 func_decl = { inline? ~ bank? ~ ("void" | (var_sign? ~ var_simple_type?)) ~ interrupt? ~ id_name ~ "(" ~ ("void" | parameters)? ~ ")" ~ (";" | block) ~ ";"*}
 parameters = { parameter ~ ("," ~ parameter)* }
 parameter = { local_var_type ~ pointer* ~ id_name ~ array_spec? }

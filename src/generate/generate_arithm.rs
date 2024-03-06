@@ -258,6 +258,36 @@ impl<'a> GeneratorState<'a> {
         }
     }
 
+    pub(crate) fn generate_shift_16bits(&mut self, left: &ExprType, op: &Operation, right: &ExprType, pos: usize) -> Result<ExprType, Error>
+    {
+        let v = match left {
+            ExprType::Absolute(varname, _, _) => self.compiler_state.get_variable(varname),
+            ExprType::AbsoluteX(varname) => self.compiler_state.get_variable(varname),
+            _ => unreachable!()
+        };
+        if let ExprType::Immediate(value) = right {
+            if self.acc_in_use { self.sasm(PHA)?; }
+            for _ in 0..*value {
+                if let Operation::Bls(_) = op {
+                    self.asm(ASL, left, pos, false)?;
+                    self.asm(ROL, left, pos, true)?;
+                } else if v.signed {
+                    self.asm(LDA, left, pos, true)?;
+                    self.asm(ASL, &ExprType::Nothing, pos, false)?;
+                    self.asm(ROR, left, pos, true)?;
+                    self.asm(ROR, left, pos, false)?;
+                } else {
+                    self.asm(LSR, left, pos, true)?;
+                    self.asm(ROR, left, pos, false)?;
+                }
+            }
+            if self.acc_in_use { self.sasm(PLA)?; }
+            Ok(ExprType::Nothing)
+        } else {
+            unreachable!();
+        }
+    }
+
     pub(crate) fn generate_shift(&mut self, left: &ExprType, op: &Operation, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
     {
         let mut acc_in_use = self.acc_in_use;
@@ -294,16 +324,13 @@ impl<'a> GeneratorState<'a> {
                                         }
                                         self.tmp_in_use = true;
                                         return Ok(ExprType::Tmp(signed));
-                                    } else {
-                                        self.acc_in_use = true;
-                                        return Ok(ExprType::A(signed));
-                                    }
-                                } else {
-                                    return Ok(ExprType::Absolute(varname.clone(), true, offset + v.size as i32));
+                                    } 
+                                    self.acc_in_use = true;
+                                    return Ok(ExprType::A(signed));
                                 }
-                            } else {
-                                return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
-                            } 
+                                return Ok(ExprType::Absolute(varname.clone(), true, offset + v.size as i32));
+                            }
+                            return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos));
                         },
                         _ => return Err(self.compiler_state.syntax_error("Incorrect right value for right shift operation on short (constant 8 only supported)", pos))
                     };

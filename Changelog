@@ -1,5 +1,6 @@
 V1.0.20 (02/29/2024) :
-    - Optimized away useless loads 
+    - Optimized away useless loads
+		- Implemented 16 bits shifting
 
 V1.0.19 (02/16/2024) :
     - Added protection to clseep nops 

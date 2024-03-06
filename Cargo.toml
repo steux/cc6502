@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "game-development", "compilers"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 pest = "2"
 pest_derive = "2"
