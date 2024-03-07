@@ -49,10 +49,11 @@
 // TODO: Implement function pointers
 // TODO: Implement new "nopagecross" keyword
 // DONE: Implement warnings for constants not fitting in 8 bits
-// TODO: Optimize out LDAs separated by cmp and branches
+// DONE: Optimize out LDAs separated by cmp and branches
 // DONE: Implement 16 bits shifting
 // TODO: Forbid use of arrays of arrays of pointers (arrays of CharCharPtr)
-
+// TODO: Enhance 16 bits arithmetics to avoid erroneous computations
+//
 pub mod assemble;
 pub mod compile;
 mod cpp;

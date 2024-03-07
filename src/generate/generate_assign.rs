@@ -1,6 +1,6 @@
 /*
-    cc6502 - a subset of C compiler for the 6502 processor 
-    Copyright (C) 2023 Bruno STEUX 
+    cc6502 - a subset of C compiler for the 6502 processor
+    Copyright (C) 2023 Bruno STEUX
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,125 +18,153 @@
     Contact info: bruno.steux@gmail.com
 */
 
-use crate::error::Error;
-use crate::compile::*;
 use crate::assemble::AsmMnemonic::*;
+use crate::compile::*;
+use crate::error::Error;
 
-use super::{GeneratorState, ExprType, FlagsState};
+use super::{ExprType, FlagsState, GeneratorState};
 
 impl<'a> GeneratorState<'a> {
-
-    pub(crate) fn generate_assign(&mut self, left: &ExprType, right: &ExprType, pos: usize, high_byte: bool) -> Result<ExprType, Error>
-    {
+    pub(crate) fn generate_assign(
+        &mut self,
+        left: &ExprType,
+        right: &ExprType,
+        pos: usize,
+        high_byte: bool,
+    ) -> Result<ExprType, Error> {
         match left {
-            ExprType::X => {
-                match right {
-                    ExprType::Immediate(_) => {
-                        self.asm(LDX, right, pos, high_byte)?;
-                        self.flags = FlagsState::X; 
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X) 
-                    },
-                    ExprType::Tmp(_) => {
-                        self.asm(LDX, right, pos, high_byte)?;
-                        self.flags = FlagsState::X; 
-                        self.tmp_in_use = false;
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X) 
-                    },
-                    ExprType::Absolute(_, _, _) => {
-                        self.asm(LDX, right, pos, high_byte)?;
+            ExprType::X => match right {
+                ExprType::Immediate(i) => {
+                    if *i > 255 || *i < -128 {
+                        self.compiler_state.warning(
+                            "Constant doesn't fit into 8 bits in a 8 bits assignment",
+                            pos,
+                        );
+                    }
+                    self.asm(LDX, right, pos, high_byte)?;
+                    self.flags = FlagsState::X;
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::Tmp(_) => {
+                    self.asm(LDX, right, pos, high_byte)?;
+                    self.flags = FlagsState::X;
+                    self.tmp_in_use = false;
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::Absolute(_, _, _) => {
+                    self.asm(LDX, right, pos, high_byte)?;
+                    self.flags = FlagsState::X;
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::AbsoluteX(_) => {
+                    if self.acc_in_use {
+                        self.sasm(PHA)?;
+                    }
+                    self.asm(LDA, right, pos, high_byte)?;
+                    self.sasm(TAX)?;
+                    if self.acc_in_use {
+                        self.sasm(PLA)?;
+                        self.flags = FlagsState::Unknown;
+                    } else {
                         self.flags = FlagsState::X;
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X)
-                    },
-                    ExprType::AbsoluteX(_) => {
-                        if self.acc_in_use { self.sasm(PHA)?; }
+                    }
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::AbsoluteY(variable) => {
+                    let v = self.compiler_state.get_variable(variable);
+                    if v.var_type == VariableType::CharPtr && !v.var_const && v.size == 1 {
+                        if self.acc_in_use {
+                            self.sasm(PHA)?;
+                        }
                         self.asm(LDA, right, pos, high_byte)?;
                         self.sasm(TAX)?;
-                        if self.acc_in_use { 
+                        if self.acc_in_use {
                             self.sasm(PLA)?;
                             self.flags = FlagsState::Unknown;
                         } else {
                             self.flags = FlagsState::X;
                         }
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X)
-                    },
-                    ExprType::AbsoluteY(variable) => {
-                        let v = self.compiler_state.get_variable(variable);
-                        if v.var_type == VariableType::CharPtr && !v.var_const && v.size == 1 {
-                            if self.acc_in_use { self.sasm(PHA)?; }
-                            self.asm(LDA, right, pos, high_byte)?;
-                            self.sasm(TAX)?;
-                            if self.acc_in_use { 
-                                self.sasm(PLA)?;
-                                self.flags = FlagsState::Unknown;
-                            } else {
-                                self.flags = FlagsState::X;
-                            }
-                        } else {
-                            self.asm(LDX, right, pos, high_byte)?;
-                            self.flags = FlagsState::X; 
-                        }
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X)
-                    },
-                    ExprType::A(_) => {
-                        self.sasm(TAX)?;
+                    } else {
+                        self.asm(LDX, right, pos, high_byte)?;
                         self.flags = FlagsState::X;
-                        self.acc_in_use = false;
-                        Ok(ExprType::X)
-                    },
-                    ExprType::X => {
-                        Ok(ExprType::X)
-                    },
-                    ExprType::Y => {
-                        if self.acc_in_use { self.sasm(PHA)?; }
-                        self.sasm(TYA)?;
-                        self.sasm(TAX)?;
-                        if self.acc_in_use { 
-                            self.sasm(PLA)?;
-                            self.flags = FlagsState::Unknown;
-                        } else {
-                            self.flags = FlagsState::X;
-                        }
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::X)
-                    },
-                    ExprType::Nothing => unreachable!(),
-                    ExprType::Label(_) => unreachable!(),
+                    }
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
                 }
+                ExprType::A(_) => {
+                    self.sasm(TAX)?;
+                    self.flags = FlagsState::X;
+                    self.acc_in_use = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::X => Ok(ExprType::X),
+                ExprType::Y => {
+                    if self.acc_in_use {
+                        self.sasm(PHA)?;
+                    }
+                    self.sasm(TYA)?;
+                    self.sasm(TAX)?;
+                    if self.acc_in_use {
+                        self.sasm(PLA)?;
+                        self.flags = FlagsState::Unknown;
+                    } else {
+                        self.flags = FlagsState::X;
+                    }
+                    self.carry_flag_ok = false;
+                    Ok(ExprType::X)
+                }
+                ExprType::Nothing => unreachable!(),
+                ExprType::Label(_) => unreachable!(),
             },
             ExprType::Y => {
                 if self.saved_y {
-                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                    return Err(self
+                        .compiler_state
+                        .syntax_error("Code too complex for the compiler", pos));
                 }
                 match right {
-                    ExprType::Immediate(_) | ExprType::AbsoluteX(_) => {
-                        self.asm(LDY, right, pos, high_byte)?;
-                        self.flags = FlagsState::Y; 
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::Y) 
-                    },
-                    ExprType::Tmp(_) => {
-                        self.asm(LDY, right, pos, high_byte)?;
-                        self.flags = FlagsState::Y; 
-                        self.tmp_in_use = false;
-                        self.carry_flag_ok = false;
-                        Ok(ExprType::Y) 
-                    },
-                    ExprType::Absolute(_, _ , _) => {
+                    ExprType::Immediate(i) => {
+                        if *i > 255 || *i < -128 {
+                            self.compiler_state.warning(
+                                "Constant doesn't fit into 8 bits in a 8 bits assignment",
+                                pos,
+                            );
+                        }
                         self.asm(LDY, right, pos, high_byte)?;
                         self.flags = FlagsState::Y;
                         self.carry_flag_ok = false;
                         Ok(ExprType::Y)
-                    },
+                    }
+                    ExprType::AbsoluteX(_) => {
+                        self.asm(LDY, right, pos, high_byte)?;
+                        self.flags = FlagsState::Y;
+                        self.carry_flag_ok = false;
+                        Ok(ExprType::Y)
+                    }
+                    ExprType::Tmp(_) => {
+                        self.asm(LDY, right, pos, high_byte)?;
+                        self.flags = FlagsState::Y;
+                        self.tmp_in_use = false;
+                        self.carry_flag_ok = false;
+                        Ok(ExprType::Y)
+                    }
+                    ExprType::Absolute(_, _, _) => {
+                        self.asm(LDY, right, pos, high_byte)?;
+                        self.flags = FlagsState::Y;
+                        self.carry_flag_ok = false;
+                        Ok(ExprType::Y)
+                    }
                     ExprType::AbsoluteY(_) => {
-                        if self.acc_in_use { self.sasm(PHA)?; }
+                        if self.acc_in_use {
+                            self.sasm(PHA)?;
+                        }
                         self.asm(LDA, right, pos, high_byte)?;
                         self.sasm(TAY)?;
-                        if self.acc_in_use { 
+                        if self.acc_in_use {
                             self.sasm(PLA)?;
                             self.flags = FlagsState::Unknown;
                         } else {
@@ -144,18 +172,20 @@ impl<'a> GeneratorState<'a> {
                         }
                         self.carry_flag_ok = false;
                         Ok(ExprType::Y)
-                    },
-                    ExprType::A(_)=> {
+                    }
+                    ExprType::A(_) => {
                         self.sasm(TAY)?;
                         self.acc_in_use = false;
                         self.flags = FlagsState::Y;
                         Ok(ExprType::Y)
-                    },
+                    }
                     ExprType::X => {
-                        if self.acc_in_use { self.sasm(PHA)?; }
+                        if self.acc_in_use {
+                            self.sasm(PHA)?;
+                        }
                         self.sasm(TXA)?;
                         self.sasm(TAY)?;
-                        if self.acc_in_use { 
+                        if self.acc_in_use {
                             self.sasm(PLA)?;
                             self.flags = FlagsState::Unknown;
                         } else {
@@ -163,16 +193,16 @@ impl<'a> GeneratorState<'a> {
                         }
                         self.carry_flag_ok = false;
                         Ok(ExprType::Y)
-                    },
+                    }
                     ExprType::Y => {
                         self.flags = FlagsState::Y;
                         self.carry_flag_ok = false;
                         Ok(ExprType::Y)
-                    },
+                    }
                     ExprType::Nothing => unreachable!(),
                     ExprType::Label(_) => unreachable!(),
                 }
-            },
+            }
             _ => {
                 match right {
                     ExprType::X => {
@@ -186,19 +216,21 @@ impl<'a> GeneratorState<'a> {
                                         if self.acc_in_use { self.sasm(PHA)?; }
                                         self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
                                         self.asm(STA, left, pos, true)?;
-                                        if self.acc_in_use { 
+                                        if self.acc_in_use {
                                             self.sasm(PLA)?;
                                         }
                                     } else {
-                                        unreachable!(); 
+                                        unreachable!();
                                     }
                                     self.flags = FlagsState::Unknown;
                                 }*/
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::X)
-                            },
+                            }
                             ExprType::AbsoluteX(_) => {
-                                if self.acc_in_use { self.sasm(PHA)?; }
+                                if self.acc_in_use {
+                                    self.sasm(PHA)?;
+                                }
                                 self.sasm(TXA)?;
                                 self.asm(STA, left, pos, high_byte)?;
                                 if self.acc_in_use {
@@ -209,13 +241,17 @@ impl<'a> GeneratorState<'a> {
                                 }
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::X)
-                            },
+                            }
                             ExprType::AbsoluteY(variable) => {
                                 let v = self.compiler_state.get_variable(variable);
-                                if v.memory == VariableMemory::Zeropage && v.var_type != VariableType::CharPtr {
+                                if v.memory == VariableMemory::Zeropage
+                                    && v.var_type != VariableType::CharPtr
+                                {
                                     self.asm(STX, left, pos, high_byte)?;
                                 } else {
-                                    if self.acc_in_use { self.sasm(PHA)?; }
+                                    if self.acc_in_use {
+                                        self.sasm(PHA)?;
+                                    }
                                     self.sasm(TXA)?;
                                     self.asm(STA, left, pos, high_byte)?;
                                     if self.acc_in_use {
@@ -227,26 +263,32 @@ impl<'a> GeneratorState<'a> {
                                 }
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::X)
-                            },
+                            }
                             ExprType::A(_) => {
                                 if self.acc_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.sasm(TXA)?;
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
-                            },
+                            }
                             ExprType::Tmp(_) => {
                                 if self.tmp_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.asm(STX, left, pos, high_byte)?;
                                 self.tmp_in_use = true;
                                 return Ok(ExprType::Tmp(false));
-                            },
-                            _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
+                            }
+                            _ => Err(self
+                                .compiler_state
+                                .syntax_error("Bad left value in assignement", pos)),
                         }
-                    },
+                    }
                     ExprType::Y => {
                         match left {
                             ExprType::Absolute(_, _, _) => {
@@ -257,20 +299,22 @@ impl<'a> GeneratorState<'a> {
                                         if self.acc_in_use { self.sasm(PHA)?; }
                                         self.asm(LDA, &ExprType::Immediate(0), pos, false)?;
                                         self.asm(STA, left, pos, true)?;
-                                        if self.acc_in_use { 
+                                        if self.acc_in_use {
                                             self.sasm(PLA)?;
                                         }
                                     } else {
-                                        unreachable!(); 
+                                        unreachable!();
                                     }
                                     self.flags = FlagsState::Unknown;
                                 }
                                 */
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
-                            },
+                            }
                             ExprType::AbsoluteY(_) => {
-                                if self.acc_in_use { self.sasm(PHA)?; }
+                                if self.acc_in_use {
+                                    self.sasm(PHA)?;
+                                }
                                 self.sasm(TYA)?;
                                 self.asm(STA, left, pos, high_byte)?;
                                 if self.acc_in_use {
@@ -281,13 +325,15 @@ impl<'a> GeneratorState<'a> {
                                 }
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
-                            },
+                            }
                             ExprType::AbsoluteX(variable) => {
                                 let v = self.compiler_state.get_variable(variable);
                                 if v.memory == VariableMemory::Zeropage {
                                     self.asm(STY, left, pos, high_byte)?;
                                 } else {
-                                    if self.acc_in_use { self.sasm(PHA)?; }
+                                    if self.acc_in_use {
+                                        self.sasm(PHA)?;
+                                    }
                                     self.sasm(TYA)?;
                                     self.asm(STA, left, pos, high_byte)?;
                                     if self.acc_in_use {
@@ -299,72 +345,118 @@ impl<'a> GeneratorState<'a> {
                                 }
                                 self.carry_flag_ok = false;
                                 Ok(ExprType::Y)
-                            },
+                            }
                             ExprType::A(_) => {
                                 if self.acc_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.sasm(TYA)?;
                                 self.acc_in_use = true;
                                 return Ok(ExprType::A(false));
-                            },
+                            }
                             ExprType::Tmp(_) => {
                                 if self.tmp_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.asm(STY, left, pos, high_byte)?;
                                 self.tmp_in_use = true;
                                 return Ok(ExprType::Tmp(false));
-                            },
-                            _ => Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
+                            }
+                            _ => Err(self
+                                .compiler_state
+                                .syntax_error("Bad left value in assignement", pos)),
                         }
-                    },
+                    }
                     _ => {
                         let mut acc_in_use = self.acc_in_use;
                         let signed;
                         match right {
-                            ExprType::Absolute(_, _, _) | ExprType::AbsoluteX(_) | ExprType::AbsoluteY(_) | ExprType::Immediate(_) | ExprType::Tmp(_) => {
-                                if self.acc_in_use { self.sasm(PHA)?; }
+                            ExprType::Absolute(_, _, _)
+                            | ExprType::AbsoluteX(_)
+                            | ExprType::AbsoluteY(_)
+                            | ExprType::Tmp(_) => {
+                                if self.acc_in_use {
+                                    self.sasm(PHA)?;
+                                }
                                 signed = self.asm(LDA, right, pos, high_byte)?;
                                 self.carry_flag_ok = false;
-                            },
+                            }
+                            ExprType::Immediate(i) => {
+                                if let ExprType::Absolute(_, eight_bits, _) = left {
+                                    if *eight_bits && (*i > 255 || *i < -128) {
+                                        self.compiler_state.warning(
+                                            "Constant doesn't fit into 8 bits in a 8 bits assignment",
+                                            pos,
+                                        );
+                                    }
+                                }
+                                if self.acc_in_use {
+                                    self.sasm(PHA)?;
+                                }
+                                signed = self.asm(LDA, right, pos, high_byte)?;
+                                self.carry_flag_ok = false;
+                            }
                             ExprType::A(s) => {
                                 signed = *s;
                                 acc_in_use = false;
                                 self.acc_in_use = false;
-                            },
-                            _ => unreachable!()
+                            }
+                            _ => unreachable!(),
                         };
                         match left {
                             ExprType::Absolute(a, b, c) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::Absolute(a.clone(), *b, *c) }
-                            },
+                                self.flags = if high_byte {
+                                    FlagsState::Unknown
+                                } else {
+                                    FlagsState::Absolute(a.clone(), *b, *c)
+                                }
+                            }
                             ExprType::AbsoluteX(s) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteX(s.clone()) }
-                            },
+                                self.flags = if high_byte {
+                                    FlagsState::Unknown
+                                } else {
+                                    FlagsState::AbsoluteX(s.clone())
+                                }
+                            }
                             ExprType::AbsoluteY(s) => {
                                 self.asm(STA, left, pos, high_byte)?;
-                                self.flags = if high_byte { FlagsState::Unknown } else { FlagsState::AbsoluteY(s.clone()) }
-                            },
+                                self.flags = if high_byte {
+                                    FlagsState::Unknown
+                                } else {
+                                    FlagsState::AbsoluteY(s.clone())
+                                }
+                            }
                             ExprType::A(_) => {
                                 if acc_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.acc_in_use = true;
                                 self.flags = FlagsState::A;
                                 return Ok(ExprType::A(signed));
-                            },
+                            }
                             ExprType::Tmp(_) => {
                                 if self.tmp_in_use {
-                                    return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
+                                    return Err(self
+                                        .compiler_state
+                                        .syntax_error("Code too complex for the compiler", pos));
                                 }
                                 self.tmp_in_use = true;
                                 self.asm(STA, left, pos, high_byte)?;
                                 return Ok(ExprType::Tmp(signed));
-                            },
-                            _ => return Err(self.compiler_state.syntax_error("Bad left value in assignement", pos)),
+                            }
+                            _ => {
+                                return Err(self
+                                    .compiler_state
+                                    .syntax_error("Bad left value in assignement", pos))
+                            }
                         };
                         if acc_in_use {
                             self.sasm(PLA)?;
