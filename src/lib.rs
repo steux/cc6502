@@ -47,7 +47,7 @@
 // DONE: Indicate error line when compiler error not implemented
 // DONE: 16 bits inc produces incorrect core for ramchip
 // TODO: Implement function pointers
-// TODO: Implement new "nopagecross" keyword
+// DONE: Implement new "nopagecross" keyword
 // DONE: Implement warnings for constants not fitting in 8 bits
 // DONE: Optimize out LDAs separated by cmp and branches
 // DONE: Implement 16 bits shifting
