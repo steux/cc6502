@@ -186,6 +186,6 @@ string      = @{ (!"\"" ~ character)* }
 quoted_string = { ("@" ~ decimal ~ "@")+ } // Actual definition after C preprocessing
 
 calc_expr       =   { calc_prefix* ~ calc_primary ~ (calc_infix ~ calc_prefix* ~ calc_primary)* }
-    calc_infix    =  _{ mul | div | add | sub | bls | brs | land | lor | and | xor | or | gt | gte | lt | lte | eq | neq | not | bnot | ternary_cond1 | ternary_cond2 }
+    calc_infix    =  _{ mul | div | add | sub | bls | brs | land | lor | and | xor | or | gte | gt | lte | lt | eq | neq | not | bnot | ternary_cond1 | ternary_cond2 }
     calc_prefix   =  _{ neg | not | bnot }
     calc_primary  =  _{ int | "(" ~ calc_expr ~ ")" }
