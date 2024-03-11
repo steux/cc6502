@@ -1,3 +1,6 @@
+V1.0.21 (03/11/2024) :
+    - Bug corrected (cc2600 couldn't compile anymore)
+
 V1.0.20 (02/29/2024) :
     - Optimized away useless loads
 		- Implemented 16 bits shifting

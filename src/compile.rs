@@ -1940,7 +1940,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         def: VariableDefinition::Value(VariableValue::Int(0x2d)),
         var_type: VariableType::Char, 
         size: 1,
-        reversed: false, scattered: None, holeydma: false,
+        reversed: false, scattered: None, holeydma: false, nopagecross: false,
         global: true
     });
 
