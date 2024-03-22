@@ -1,14 +1,17 @@
-V1.0.21 (03/11/2024) :
+v1.0.22 (03/22/2024) :
+    - Bug corrected wdt to incorrect flags set when saving Y register 
+
+v1.0.21 (03/11/2024) :
     - Bug corrected (cc2600 couldn't compile anymore)
 
-V1.0.20 (02/29/2024) :
+v1.0.20 (02/29/2024) :
     - Optimized away useless loads
 		- Implemented 16 bits shifting
 		- Implemented warnings for constants not fitting in 8 bits
 		- Implemented new "nopagecross" keyword
 		- Corrected a bug in grammar (>= was forbidden in calc_expr)
 
-V1.0.19 (02/16/2024) :
+v1.0.19 (02/16/2024) :
     - Added protection to clseep nops 
 
 v1.0.18 (02/16/2024) :

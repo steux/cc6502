@@ -32,6 +32,8 @@ impl<'a> GeneratorState<'a> {
             self.asm_restore_y();
             self.saved_y = false;
             self.tmp_in_use = false;
+            self.flags = FlagsState::Y;
+            self.carry_flag_ok = false;
         }
 
         let def = self.deferred_plusplus.clone();
@@ -450,6 +452,8 @@ impl<'a> GeneratorState<'a> {
                         self.asm_restore_y();
                         self.saved_y = false;
                         self.tmp_in_use = false;
+                        self.flags = FlagsState::Y;
+                        self.carry_flag_ok = false;
                     }
                     if !high_byte {
                         match left {
