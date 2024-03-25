@@ -1,5 +1,6 @@
 v1.0.22 (03/22/2024) :
     - Bug corrected wdt to incorrect flags set when saving Y register 
+		- Bug corrected wrt save Y register & deferred plusplus bad order
 
 v1.0.21 (03/11/2024) :
     - Bug corrected (cc2600 couldn't compile anymore)

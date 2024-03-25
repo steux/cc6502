@@ -28,18 +28,18 @@ use super::{ExprType, FlagsState, GeneratorState};
 
 impl<'a> GeneratorState<'a> {
     fn purge_deferred_plusplus_and_savey(&mut self) -> Result<(), Error> {
+        let def = self.deferred_plusplus.clone();
+        self.deferred_plusplus.clear();
+        for d in def {
+            self.generate_plusplus(&d.0, d.1, d.2)?;
+        }
+
         if self.saved_y {
             self.asm_restore_y();
             self.saved_y = false;
             self.tmp_in_use = false;
             self.flags = FlagsState::Y;
             self.carry_flag_ok = false;
-        }
-
-        let def = self.deferred_plusplus.clone();
-        self.deferred_plusplus.clear();
-        for d in def {
-            self.generate_plusplus(&d.0, d.1, d.2)?;
         }
         Ok(())
     }
