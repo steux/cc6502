@@ -1,4 +1,5 @@
 v1.0.22 (03/22/2024) :
+		- Bug corrected : bad const propagation in declarations
     - Bug corrected wdt to incorrect flags set when saving Y register 
 		- Bug corrected wrt save Y register & deferred plusplus bad order
 		- Bug corrected wrt save T register in branching

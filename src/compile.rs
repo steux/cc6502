@@ -909,8 +909,8 @@ impl<'a> CompilerState<'a> {
     fn compile_var_decl(&mut self, pairs: Pairs<Rule>, global: bool) -> Result<(), Error>
     {
         let mut var_type_ex = VariableType::Char;
-        let mut set_const = !global;
-        let mut var_const = !global;
+        let mut set_const_ex = !global;
+        let mut var_const_ex = !global;
         let mut signedness_specified = false;
         let mut signed = self.signed_chars;
         let mut memory = VariableMemory::Zeropage;
@@ -929,8 +929,8 @@ impl<'a> CompilerState<'a> {
                         let start = p.as_span().start();
                         match p.as_rule() {
                             Rule::var_const => {
-                                var_const = true;
-                                set_const = true;
+                                var_const_ex = true;
+                                set_const_ex = true;
                             },
                             Rule::bank => memory = VariableMemory::ROM(p.into_inner().next().unwrap().as_str().parse::<u32>().unwrap()),
                             Rule::superchip => memory = VariableMemory::Superchip,
@@ -954,8 +954,8 @@ impl<'a> CompilerState<'a> {
                             },
                             Rule::reversed => reversed = true,
                             Rule::scattered => {
-                                var_const = true;
-                                set_const = true;
+                                var_const_ex = true;
+                                set_const_ex = true;
                                 let mut px = p.into_inner();
                                 let a = self.parse_calc(px.next().unwrap().into_inner())?;
                                 let b = self.parse_calc(px.next().unwrap().into_inner())?;
@@ -989,6 +989,8 @@ impl<'a> CompilerState<'a> {
                     let mut def = VariableDefinition::None;
                     let mut var_type = var_type_ex;
                     let mut start = 0;
+                    let mut var_const = var_const_ex;
+                    let mut set_const = set_const_ex;
                     for p in pair.into_inner() {
                         match p.as_rule() {
                             Rule::pointer => var_type = match var_type {
@@ -1334,7 +1336,7 @@ impl<'a> CompilerState<'a> {
             Rule::local_var_decl_mut => {
                 let mut statements = Vec::<StatementLoc>::new();
                 let mut var_type_ex = VariableType::Char;
-                let mut var_const = false;
+                let var_const_ex = false;
                 let mut signedness_specified = false;
                 let mut signed = self.signed_chars;
                 let memory = VariableMemory::Zeropage;
@@ -1366,6 +1368,7 @@ impl<'a> CompilerState<'a> {
                             let mut size = None;
                             let mut var_type = var_type_ex;
                             let mut start = 0;
+                            let mut var_const = var_const_ex;
                             for p in pair.into_inner() {
                                 match p.as_rule() {
                                     Rule::pointer => var_type = match var_type {
