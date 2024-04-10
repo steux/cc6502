@@ -1,18 +1,18 @@
 v1.0.22 (03/22/2024) :
-		- Bug corrected : bad const propagation in declarations
+    - Bug corrected : bad const propagation in declarations
     - Bug corrected wdt to incorrect flags set when saving Y register 
-		- Bug corrected wrt save Y register & deferred plusplus bad order
-		- Bug corrected wrt save T register in branching
+    - Bug corrected wrt save Y register & deferred plusplus bad order
+    - Bug corrected wrt save T register in branching
 
 v1.0.21 (03/11/2024) :
     - Bug corrected (cc2600 couldn't compile anymore)
 
 v1.0.20 (02/29/2024) :
     - Optimized away useless loads
-		- Implemented 16 bits shifting
-		- Implemented warnings for constants not fitting in 8 bits
-		- Implemented new "nopagecross" keyword
-		- Corrected a bug in grammar (>= was forbidden in calc_expr)
+    - Implemented 16 bits shifting
+    - Implemented warnings for constants not fitting in 8 bits
+    - Implemented new "nopagecross" keyword
+    - Corrected a bug in grammar (>= was forbidden in calc_expr)
 
 v1.0.19 (02/16/2024) :
     - Added protection to clseep nops 
@@ -20,7 +20,7 @@ v1.0.19 (02/16/2024) :
 v1.0.18 (02/16/2024) :
     - Bug corrected wrt indexed by X variables increment
     - Added line numbers in inserted code (easier debugging)
-		- Implemented warnings for constants not fitting in 8 bits
+    - Implemented warnings for constants not fitting in 8 bits
 
 v1.0.17 (02/01/2024) :
     - Bug correction : 16 bits inc produces incorrect core for ramchip
