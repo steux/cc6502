@@ -1,3 +1,6 @@
+v1.0.23 (04/12/2024) :
+    - Inroduced noholeydma keyword
+
 v1.0.22 (03/22/2024) :
     - Bug corrected : bad const propagation in declarations
     - Bug corrected wdt to incorrect flags set when saving Y register 

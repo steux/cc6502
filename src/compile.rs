@@ -83,6 +83,7 @@ pub struct Variable {
     pub reversed: bool,
     pub scattered: Option<(u32, u32)>,
     pub holeydma: bool,
+    pub noholeydma: bool,
     pub nopagecross: bool,
     pub global: bool
 }
@@ -367,6 +368,7 @@ impl<'a> CompilerState<'a> {
                 reversed: false,
                 scattered: None,
                 holeydma: false,
+                noholeydma: false,
                 nopagecross: false,
                 global: true,
             });
@@ -515,6 +517,7 @@ impl<'a> CompilerState<'a> {
                 reversed: false,
                 scattered: None,
                 holeydma: false,
+                noholeydma: false,
                 nopagecross: false,
                 global: true,
             });
@@ -918,6 +921,7 @@ impl<'a> CompilerState<'a> {
         let mut reversed = false;
         let mut scattered = None;
         let mut holeydma = false;
+        let mut noholeydma = false;
         let mut screencode = false;
         let mut nopagecross = false;
         
@@ -969,6 +973,11 @@ impl<'a> CompilerState<'a> {
                             } 
                             Rule::holeydma => {
                                 holeydma = true;
+#[cfg(not(feature = "atari7800"))]
+                                return Err(self.syntax_error("Holey DMA is only available on Atari 7800 ", start));
+                            },
+                            Rule::noholeydma => {
+                                noholeydma = true;
 #[cfg(not(feature = "atari7800"))]
                                 return Err(self.syntax_error("Holey DMA is only available on Atari 7800 ", start));
                             },
@@ -1228,7 +1237,7 @@ impl<'a> CompilerState<'a> {
                                                             alignment: 1,
                                                             def: VariableDefinition::Array(arr),
                                                             var_type: VariableType::CharPtr, size,
-                                                            reversed: false, scattered: None, holeydma: false, nopagecross, global: true});
+                                                            reversed: false, scattered: None, holeydma: false, noholeydma: false, nopagecross, global: true});
                                                         v.push((name, 0));
                                                     },
                                                     _ => return Err(self.syntax_error("Unexpected array value", start)),
@@ -1309,7 +1318,7 @@ impl<'a> CompilerState<'a> {
                             alignment,
                             def,
                             var_type, size: size.unwrap_or(1),
-                            reversed, scattered, holeydma, nopagecross, global: true
+                            reversed, scattered, holeydma, noholeydma, nopagecross, global: true
                         });
                     }
                 },
@@ -1343,7 +1352,6 @@ impl<'a> CompilerState<'a> {
                 let alignment = 1;
                 let reversed = false;
                 let scattered = None;
-                let holeydma = false;
                 let nopagecross = false;
                 for pair in p.into_inner() {
                     match pair.as_rule() {
@@ -1435,7 +1443,7 @@ impl<'a> CompilerState<'a> {
                                     alignment,
                                     def: VariableDefinition::None,
                                     var_type, size: size.unwrap_or(1),
-                                    reversed, scattered, holeydma, nopagecross, global: false
+                                    reversed, scattered, holeydma: false, noholeydma: false, nopagecross, global: false
                                 });
                             }
                         },
@@ -1587,7 +1595,6 @@ impl<'a> CompilerState<'a> {
                         let reversed = false;
                         let scattered = None;
                         let nopagecross = false;
-                        let holeydma = false;
                         let mut shortname = "";
                         let mut longname = String::new(); 
                         let mut size = None;
@@ -1647,7 +1654,7 @@ impl<'a> CompilerState<'a> {
                             alignment,
                             def: VariableDefinition::None,
                             var_type, size: size.unwrap_or(1),
-                            reversed, scattered, holeydma, nopagecross, global: false
+                            reversed, scattered, holeydma: false, noholeydma: false, nopagecross, global: false
                         };
                         self.variables.insert(longname, var);
                         parameters.push(shortname.into());
@@ -1943,7 +1950,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         def: VariableDefinition::Value(VariableValue::Int(0x2d)),
         var_type: VariableType::Char, 
         size: 1,
-        reversed: false, scattered: None, holeydma: false, nopagecross: false,
+        reversed: false, scattered: None, holeydma: false, noholeydma: false, nopagecross: false,
         global: true
     });
 
