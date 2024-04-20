@@ -196,12 +196,15 @@ impl<'a> GeneratorState<'a> {
                 SBC
             },
             Operation::And(_) => {
+                self.carry_flag_ok = false;
                 AND
             },
             Operation::Or(_) => {
+                self.carry_flag_ok = false;
                 ORA
             },
             Operation::Xor(_) => {
+                self.carry_flag_ok = false;
                 EOR
             },
             Operation::Mul(_) => { return Err(self.compiler_state.syntax_error("Operation not possible. 6502 doesn't implement a multiplier.", pos)) },
