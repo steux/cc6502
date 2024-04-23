@@ -286,8 +286,10 @@ impl<'a, 'b> GeneratorState<'a> {
         };
         if compute_subtraction {
             let e = self.generate_arithm(l, &Operation::Sub(false), r, pos, false)?;
-            if e != ExprType::Tmp(false) {
+            if e != ExprType::Tmp(false) && *op != Operation::Gte && *op != Operation::Lt {
                 self.generate_assign(&ExprType::Tmp(false), &e, pos, false)?;
+            } else {
+                self.acc_in_use = false;
             }
             f = self.generate_arithm(l, &Operation::Sub(false), r, pos, true)?;
         }
@@ -539,6 +541,10 @@ impl<'a, 'b> GeneratorState<'a> {
                         .compiler_state
                         .syntax_error("Code too complex for the compiler", pos));
                 }
+                let v = self.compiler_state.get_variable(s);
+                if v.var_type == VariableType::ShortPtr {
+                    return self.generate_condition_16bits(left, &operator, right, pos, label);
+                }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;
                 self.flags = FlagsState::AbsoluteX((*s).clone());
@@ -548,6 +554,10 @@ impl<'a, 'b> GeneratorState<'a> {
                     return Err(self
                         .compiler_state
                         .syntax_error("Code too complex for the compiler", pos));
+                }
+                let v = self.compiler_state.get_variable(s);
+                if v.var_type == VariableType::ShortPtr {
+                    return self.generate_condition_16bits(left, &operator, right, pos, label);
                 }
                 signed = self.asm(LDA, left, pos, false)?;
                 cmp = true;

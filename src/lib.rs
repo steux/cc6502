@@ -53,6 +53,7 @@
 // DONE: Implement 16 bits shifting
 // TODO: Forbid use of arrays of arrays of pointers (arrays of CharCharPtr)
 // TODO: Enhance 16 bits arithmetics to avoid erroneous computations
+// DONE: 16 bits comparison with X indexing is processed as a 8 bits comparison
 //
 pub mod assemble;
 pub mod compile;
@@ -1235,6 +1236,32 @@ char i; void main() { i = one; }";
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("LDA a\n\tSTA cctmp\n\tLDA a+1\n\tBNE .ifend1\n\tLDA cctmp\n\tBNE .ifend1\n\tLDX #1\n.ifend1"));
+    }
+
+    #[test]
+    fn if_16bits_test8() {
+        let args = sargs(1);
+        let input = "int a[2]; void main() { if (a[X] >= 1000) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "SEC\n\tLDA a,X\n\tSBC #232\n\tLDA a+2,X\n\tSBC #3\n\tBMI .ifend1\n\tLDX #1\n.ifend1"
+        ));
+    }
+
+    #[test]
+    fn if_16bits_test9() {
+        let args = sargs(1);
+        let input = "int a[2]; void main() { if (a[Y] >= 1000) X = 1; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "SEC\n\tLDA a,Y\n\tSBC #232\n\tLDA a+2,Y\n\tSBC #3\n\tBMI .ifend1\n\tLDX #1\n.ifend1"
+        ));
     }
 
     #[test]
