@@ -285,6 +285,7 @@ impl<'a> GeneratorState<'a> {
                 }
             }
             if self.acc_in_use { self.sasm(PLA)?; }
+            self.carry_flag_ok = false;
             Ok(ExprType::Nothing)
         } else {
             unreachable!();
@@ -506,6 +507,7 @@ impl<'a> GeneratorState<'a> {
             _ => return Err(self.compiler_state.syntax_error("Incorrect right value for shift operation (positive constants only)", pos))
         };
         self.flags = FlagsState::Unknown;
+        self.carry_flag_ok = false;
         if acc_in_use {
             self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
             self.sasm(PLA)?;
