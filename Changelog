@@ -1,5 +1,6 @@
 v1.0.24 (04/20/2024) :
     - Corrected a bug wrt carry flags
+		- Added function pointers into variables hash table
 
 v1.0.23 (04/12/2024) :
     - Introduced noholeydma keyword

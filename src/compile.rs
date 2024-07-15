@@ -53,6 +53,7 @@ pub enum VariableMemory {
     Frequency,
     Ramchip,
     MemoryOnChip(u32),
+    Dummy
 }
 
 #[derive(Debug, PartialEq)]
@@ -1493,6 +1494,7 @@ impl<'a> CompilerState<'a> {
         let mut interrupt = false;
         let mut name = String::new();
         let mut parameters = Vec::<String>::new();
+        let mut superstart = None;
         for pair in pairs {
             let start = pair.as_span().start();
             match pair.as_rule() {
@@ -1513,6 +1515,7 @@ impl<'a> CompilerState<'a> {
                 },
                 Rule::id_name => {
                     name = pair.as_str().to_string();
+                    superstart = Some(start);
                 },
                 Rule::var_sign => {
                     return_signed = pair.as_str().eq("return_signed");
@@ -1552,6 +1555,20 @@ impl<'a> CompilerState<'a> {
                         parameters,
                         stack_frame_size: 0,
                     });
+                        if self.variables.get(&name).is_none() {
+                        self.variables.insert(name.to_string(), Variable {
+                            order: self.variables.len(),
+                            signed: false,
+                            memory: VariableMemory::Dummy,
+                            var_const: true,
+                            alignment: 1,
+                            def: VariableDefinition::None,
+                            var_type: VariableType::CharPtr, size: 2,
+                            reversed: false, scattered: None, holeydma: false, noholeydma: false, nopagecross: false, global: true
+                        });
+                    } else {
+                        return Err(self.syntax_error(&format!("Function {} : A global variable with the exact same name already exists", name), superstart.unwrap()));
+                    }
                     let code = self.compile_block(pair)?;
                     let f = self.functions.get_mut(&self.current_function).unwrap();
                     f.code = Some(code);
@@ -1665,7 +1682,7 @@ impl<'a> CompilerState<'a> {
         };
         // This is just a prototype definition
         if self.functions.get(&name).is_none() {
-            self.functions.insert(name, Function {
+            self.functions.insert(name.clone(), Function {
                 order: self.functions.len(),
                 inline,
                 bank,
