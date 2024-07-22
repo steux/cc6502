@@ -212,7 +212,8 @@ pub struct CompilerState<'a> {
     in_scope_variables: Vec<HashMap<String, String>>,
     current_function: String,
     variable_counter: u32,
-    default_bank: Option<u32>
+    default_bank: Option<u32>,
+    function_bank: Option<u32>,
 }
 
 impl<'a> CompilerState<'a> {
@@ -1116,7 +1117,9 @@ impl<'a> CompilerState<'a> {
                                         memory = match memory {
                                             VariableMemory::ROM(_) | VariableMemory::Display | VariableMemory::Frequency => memory,
                                             _ => {
-                                                if let Some(bank) = self.default_bank {
+                                                if let Some(bank) = self.function_bank {
+                                                    VariableMemory::ROM(bank)
+                                                } else if let Some(bank) = self.default_bank {
                                                     VariableMemory::ROM(bank)
                                                 } else {
                                                     VariableMemory::ROM(0)
@@ -1569,7 +1572,9 @@ impl<'a> CompilerState<'a> {
                     } else {
                         return Err(self.syntax_error(&format!("Function {} : A global variable with the exact same name already exists", name), superstart.unwrap()));
                     }
+                    self.function_bank = Some(bank);
                     let code = self.compile_block(pair)?;
+                    self.function_bank = None;
                     let f = self.functions.get_mut(&self.current_function).unwrap();
                     f.code = Some(code);
                     self.in_scope_variables.clear();
@@ -1901,6 +1906,7 @@ pub fn compile<I: BufRead, O: Write>(input: I, output: &mut O, args: &Args, buil
         current_function: String::new(),
         variable_counter: 0,
         default_bank: None,
+        function_bank: None,
     };
 
     let r = Cc2600Parser::parse(Rule::program, preprocessed_utf8);
