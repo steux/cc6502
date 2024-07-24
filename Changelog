@@ -1,5 +1,6 @@
 v1.0.25 (07/22/2024) :
-    - Local arrays are allocated in the right bank 
+    - Local arrays are allocated in the right bank	
+		- Corrected optimizer bug with DEC and INC instructions
 
 v1.0.24 (04/20/2024) :
     - Corrected a bug wrt carry flags

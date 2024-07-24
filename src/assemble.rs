@@ -554,6 +554,23 @@ impl AssemblyCode {
                             }
                             y_register = Some(inst.dasm_operand.clone());
                         }
+                        AsmMnemonic::DEC | AsmMnemonic::INC => {
+                            if let Some(v) = &accumulator {
+                                if v.eq(&inst.dasm_operand) {
+                                    accumulator = None;
+                                }
+                            }
+                            if let Some(v) = &x_register {
+                                if v.eq(&inst.dasm_operand) {
+                                    x_register = None;
+                                }
+                            }
+                            if let Some(v) = &y_register {
+                                if v.eq(&inst.dasm_operand) {
+                                    y_register = None;
+                                }
+                            }
+                        }
                         AsmMnemonic::INX | AsmMnemonic::DEX => {
                             if let Some(v) = &accumulator {
                                 if v.ends_with(",X") {
