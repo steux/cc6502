@@ -67,9 +67,7 @@ pub enum AsmMnemonic {
     RTI,
     PHA,
     PLA,
-    #[cfg(constant_time)]
     PHP,
-    #[cfg(constant_time)]
     PLP,
     NOP,
 }

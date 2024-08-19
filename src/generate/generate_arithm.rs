@@ -766,6 +766,7 @@ impl<'a> GeneratorState<'a> {
     pub(crate) fn generate_sign_extend(&mut self, expr: ExprType, pos: usize) -> Result<ExprType, Error>
     {
         if self.acc_in_use { self.sasm(PHA)?; }
+        /*
         #[cfg(constant_time)]
         {
             self.sasm(PHP)?;
@@ -777,6 +778,7 @@ impl<'a> GeneratorState<'a> {
             self.sasm(PLP)?;
         }
         #[cfg(not(constant_time))]
+        */  
         {
             self.asm(LDA, &expr, pos, false)?;
             self.local_label_counter_if += 1;
