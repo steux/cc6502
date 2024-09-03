@@ -19,6 +19,7 @@
 */
 
 use crate::compile::Operation;
+use crate::generate::FlagsState;
 use log::{debug, error};
 use std::fmt::{self, Debug};
 use std::io::Write;
@@ -242,6 +243,7 @@ impl AssemblyCode {
         let mut y_register = None;
         let mut iter = self.code.iter_mut();
         let mut first = iter.next();
+        let mut flags = FlagsState::Unknown;
 
         loop {
             match &first {
@@ -256,10 +258,13 @@ impl AssemblyCode {
         if let Some(AsmLine::Instruction(inst)) = &first {
             if inst.mnemonic == AsmMnemonic::LDA {
                 accumulator = Some(inst.dasm_operand.clone());
+                flags = FlagsState::A;
             } else if inst.mnemonic == AsmMnemonic::LDX {
                 x_register = Some(inst.dasm_operand.clone());
+                flags = FlagsState::X;
             } else if inst.mnemonic == AsmMnemonic::LDY {
                 y_register = Some(inst.dasm_operand.clone());
+                flags = FlagsState::Y;
             }
         } else {
             unreachable!();
@@ -315,10 +320,13 @@ impl AssemblyCode {
                         if let Some(AsmLine::Instruction(inst)) = &first {
                             if inst.mnemonic == AsmMnemonic::LDA {
                                 accumulator = Some(inst.dasm_operand.clone());
+                                flags = FlagsState::A;
                             } else if inst.mnemonic == AsmMnemonic::LDX {
                                 x_register = Some(inst.dasm_operand.clone());
+                                flags = FlagsState::X;
                             } else if inst.mnemonic == AsmMnemonic::LDY {
                                 y_register = Some(inst.dasm_operand.clone());
+                                flags = FlagsState::Y;
                             }
                         } else {
                             unreachable!();
@@ -507,12 +515,13 @@ impl AssemblyCode {
                     match inst.mnemonic {
                         AsmMnemonic::LDA => {
                             if let Some(v) = &accumulator {
-                                if v.eq(&inst.dasm_operand) {
+                                if v.eq(&inst.dasm_operand) && flags == FlagsState::A {
                                     // Remove this instruction
                                     remove_second = !inst.protected;
                                 }
                             }
                             accumulator = Some(inst.dasm_operand.clone());
+                            flags = FlagsState::A;
                         }
                         AsmMnemonic::LDX => {
                             if let Some(v) = &accumulator {
@@ -532,6 +541,7 @@ impl AssemblyCode {
                                 }
                             }
                             x_register = Some(inst.dasm_operand.clone());
+                            flags = FlagsState::X;
                         }
                         AsmMnemonic::LDY => {
                             if let Some(v) = &accumulator {
@@ -551,6 +561,7 @@ impl AssemblyCode {
                                 }
                             }
                             y_register = Some(inst.dasm_operand.clone());
+                            flags = FlagsState::Y;
                         }
                         AsmMnemonic::DEC | AsmMnemonic::INC => {
                             if let Some(v) = &accumulator {
@@ -657,6 +668,9 @@ impl AssemblyCode {
                             accumulator = None;
                             x_register = None;
                             y_register = None;
+                        }
+                        AsmMnemonic::CPX | AsmMnemonic::CPY | AsmMnemonic::CMP => {
+                            flags = FlagsState::Unknown;
                         }
                         _ => (),
                     }

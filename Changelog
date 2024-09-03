@@ -1,4 +1,5 @@
 v1.0.25 (07/22/2024) :
+		- Solved bug in optimizer (LDA removed while it sets the flags)
     - Solved bug wrt missing CMP after JSR
     - Removed constant time code in order to be comatible with the latest Rust compiler
     - Local arrays are allocated in the right bank	
