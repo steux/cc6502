@@ -954,6 +954,7 @@ impl<'a, 'b> GeneratorState<'a> {
                     self.flags = FlagsState::AbsoluteY(s.clone());
                 }
                 ExprType::A(_) => {
+                    self.asm(CMP, &ExprType::Immediate(0), pos, false)?;
                     self.acc_in_use = false;
                 }
                 ExprType::Y => {
