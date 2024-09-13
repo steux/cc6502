@@ -95,6 +95,13 @@ impl<'a> GeneratorState<'a> {
                                 .compiler_state
                                 .syntax_error("Unknown function identifier", pos)),
                             Some(f) => {
+                                let fixed_bank = if self.bankswitching_scheme == "SuperGame/EXFIX" {
+                                    7
+                                } else if self.bankswitching_scheme == "SuperGame256/EXFIX" {
+                                    15
+                                } else {
+                                    0
+                                };
                                 if self.acc_in_use {
                                     self.sasm(PHA)?;
                                 }
@@ -199,7 +206,8 @@ impl<'a> GeneratorState<'a> {
                                     }
                                 } else if f.bank == self.current_bank
                                     || self.bankswitching_scheme == "3EP"
-                                    || (self.bankswitching_scheme == "SuperGame" && f.bank == 0)
+                                    || (self.bankswitching_scheme.starts_with("SuperGame")
+                                        && (f.bank == 0 || f.bank == fixed_bank))
                                 {
                                     self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                 } else if self.bankswitching_scheme == "3E" {
@@ -221,9 +229,10 @@ impl<'a> GeneratorState<'a> {
                                     } else {
                                         return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos));
                                     }
-                                } else if self.current_bank == 0 {
+                                } else if self.current_bank == 0 || self.current_bank == fixed_bank
+                                {
                                     // Generate bankswitching call
-                                    if self.bankswitching_scheme == "SuperGame" {
+                                    if self.bankswitching_scheme.starts_with("SuperGame") {
                                         self.asm(
                                             LDA,
                                             &ExprType::Immediate((f.bank - 1) as i32),
