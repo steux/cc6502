@@ -1,4 +1,5 @@
 v1.0.25 (07/22/2024) :
+    - FIXME: fixed do statement grammar (avoid collision with do_X variables)
     - Take into account EXFIX bankswtiching scheme for Atari 7800
     - Solved bug in optimizer (LDA removed while it sets the flags)
     - Solved bug wrt missing CMP after JSR

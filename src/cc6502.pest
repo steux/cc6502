@@ -75,7 +75,7 @@ assembler_code = ${(!"==== ASSEMBLER END ===="~ ANY)*}
 
 block = { "{" ~ statement* ~ "}" }
 label = { id_name ~ ":" }
-statement = { label? ~
+statement = !{ label? ~
     ( block
     | local_var_decl
     | do_while
@@ -95,7 +95,8 @@ statement = { label? ~
     | expr ~ ";"
     | nothing ~ ";"
     ) }
-do_while = { "do" ~ statement ~ "while" ~ "(" ~ expr ~ ")" ~ ";" }
+do = @{"do" ~ WHITESPACE+}
+do_while = { do ~ statement ~ "while" ~ "(" ~ expr ~ ")" ~ ";" }
 while_do = { "while" ~ "(" ~ expr ~ ")"~ statement }
 for_loop = { "for" ~ "(" ~ (expr | nothing) ~ ";" ~ (expr | nothing) ~ ";" ~ (expr | nothing) ~ ")" ~ statement }
 if_statement = { "if" ~ "(" ~ expr ~ ")" ~ statement ~ ("else" ~ statement)* }

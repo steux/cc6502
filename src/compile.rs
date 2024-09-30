@@ -708,6 +708,7 @@ impl<'a> CompilerState<'a> {
             },
             Rule::do_while => {
                 let mut p = pair.into_inner();
+                p.next(); // Ignore the do
                 let body = self.compile_statement(p.next().unwrap())?;
                 let condition = self.parse_expr(p.next().unwrap().into_inner())?;
                 Ok(StatementLoc {
