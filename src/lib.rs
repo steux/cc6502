@@ -54,8 +54,9 @@
 // TODO: Forbid use of arrays of arrays of pointers (arrays of CharCharPtr)
 // TODO: Enhance 16 bits arithmetics to avoid erroneous computations
 // DONE: 16 bits comparison with X indexing is processed as a 8 bits comparison
-// TODO: Bad state flag state after a cmp
+// DONE: Bad state flag state after a cmp
 // DONE: Bad state flag after a JSR
+// TODO: Bug if {char i;}{char i;}
 
 pub mod assemble;
 pub mod compile;

@@ -1,6 +1,6 @@
 /*
-    cc6502 - a subset of C compiler for the 6502 processor 
-    Copyright (C) 2023 Bruno STEUX 
+    cc6502 - a subset of C compiler for the 6502 processor
+    Copyright (C) 2023 Bruno STEUX
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
     Contact info: bruno.steux@gmail.com
 */
 
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
-use regex::Regex;
 
 use crate::compile::*;
 
@@ -34,14 +34,18 @@ pub(crate) enum ExprType {
     Absolute(String, bool, i32), // variable, eight_bits, offset
     AbsoluteX(String),
     AbsoluteY(String),
-    A(bool), X, Y,
+    A(bool),
+    X,
+    Y,
     Label(String),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum FlagsState {
     Unknown,
-    A, X, Y,
+    A,
+    X,
+    Y,
     Absolute(String, bool, i32),
     AbsoluteX(String),
     AbsoluteY(String),
@@ -59,7 +63,7 @@ pub struct GeneratorState<'a> {
     pub local_label_counter_if: u32,
     local_label_counter_while: u32,
     inline_label_counter: u32,
-    loops: Vec<(String,String,bool)>,
+    loops: Vec<(String, String, bool)>,
     flags: FlagsState,
     carry_flag_ok: bool,
     acc_in_use: bool,
@@ -75,10 +79,11 @@ pub struct GeneratorState<'a> {
     protected: bool,
     carry_propagation_error: bool,
     saved_y: bool,
+    sub_output: Option<ExprType>,
 }
 
+pub mod generate_arithm;
 pub mod generate_asm;
+pub mod generate_assign;
 pub mod generate_conditions;
 pub mod generate_statements;
-pub mod generate_arithm;
-pub mod generate_assign;

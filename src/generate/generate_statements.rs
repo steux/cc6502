@@ -465,10 +465,11 @@ impl<'a> GeneratorState<'a> {
                         self.carry_flag_ok = false;
                     }
                     if !high_byte {
-                        match left {
+                        match left.clone() {
                             ExprType::Absolute(_, eight_bits, _) => {
                                 if !eight_bits {
-                                    let left = self.generate_expr(lhs, pos, true, true)?;
+                                    // Don't regenerate left hand side (it's a left value anyway)
+                                    //let left = self.generate_expr(lhs, pos, true, true)?;                                     let right = self.generate_expr(rhs, pos, true, true)?;
                                     let right = self.generate_expr(rhs, pos, true, true)?;
                                     self.generate_assign(&left, &right, pos, true)?;
                                 }
@@ -478,7 +479,8 @@ impl<'a> GeneratorState<'a> {
                                 if v.var_type == VariableType::ShortPtr
                                     || v.var_type == VariableType::CharPtrPtr
                                 {
-                                    let left = self.generate_expr(lhs, pos, true, true)?;
+                                    // Don't regenerate left hand side (it's a left value anyway)
+                                    //let left = self.generate_expr(lhs, pos, true, true)?;
                                     let right = self.generate_expr(rhs, pos, true, true)?;
                                     self.generate_assign(&left, &right, pos, true)?;
                                 }
@@ -618,7 +620,27 @@ impl<'a> GeneratorState<'a> {
                         self.dummy()
                     };
                     let tmp_in_use = self.tmp_in_use;
-                    let sub_output = self.generate_expr(sub, pos, false, second_time)?;
+                    let sub_output = match **sub {
+                        Expr::Nothing => ExprType::Nothing,
+                        Expr::Identifier(_, _) => self.generate_expr(sub, pos, false, false)?,
+                        _ => {
+                            if high_byte {
+                                match self.sub_output.take() {
+                                    Some(e) => e,
+                                    None => {
+                                        return Err(self.compiler_state.syntax_error(
+                                            "Code too complex for the compiler",
+                                            pos,
+                                        ))
+                                    }
+                                }
+                            } else {
+                                let e = self.generate_expr(sub, pos, false, false)?;
+                                self.sub_output = Some(e.clone());
+                                e
+                            }
+                        }
+                    };
                     match sub_output {
                         ExprType::Nothing => {
                             if let VariableDefinition::Value(VariableValue::Int(val)) = &v.def {

@@ -1,3 +1,6 @@
+v1.0.26 (10/28/2024) ;
+    - Experimental: Better handling of 16 bits complex expressions
+
 v1.0.25 (07/22/2024) :
     - FIXME: fixed do statement grammar (avoid collision with do_X variables)
     - Take into account EXFIX bankswtiching scheme for Atari 7800

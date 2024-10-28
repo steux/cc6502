@@ -65,6 +65,7 @@ impl<'a> GeneratorState<'a> {
             protected: false,
             carry_propagation_error: false,
             saved_y: false,
+            sub_output: None,
         }
     }
 
