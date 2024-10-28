@@ -622,7 +622,9 @@ impl<'a> GeneratorState<'a> {
                     let tmp_in_use = self.tmp_in_use;
                     let sub_output = match **sub {
                         Expr::Nothing => ExprType::Nothing,
-                        Expr::Identifier(_, _) => self.generate_expr(sub, pos, false, false)?,
+                        Expr::Identifier(_, _) | Expr::Integer(_) => {
+                            self.generate_expr(sub, pos, false, false)?
+                        }
                         _ => {
                             if high_byte {
                                 match self.sub_output.take() {

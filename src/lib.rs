@@ -1581,6 +1581,17 @@ void main() { fn2(); fn3(); }
     }
 
     #[test]
+    fn local_var_test11() {
+        let args = sargs(1);
+        let input = "void main() { { char i; } { char i; } { char i; } }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LOCAL_VARIABLES_0\n\n\tORG LOCAL_VARIABLES_0\nmain_2_i               \tds 1\nmain_2_i_0             \tds 1\nmain_2_i_1             \tds 1"));
+    }
+
+    #[test]
     fn params_test1() {
         let args = sargs(1);
         let input = "void f(char x, int y) { x = y; }; void main() { f(1, 2); }";
@@ -1797,5 +1808,55 @@ void main() { fn2(); fn3(); }
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
         assert!(result.contains("ASL ptr,X\n\tROL ptr+10,X"));
+    }
+
+    #[test]
+    fn complex_assignment_test1() {
+        let args = sargs(1);
+        let input = "char ptr2[2]; char *ptr1; void main() { ptr1[Y++] = ptr2[X++]; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA ptr2,X\n\tSTA (ptr1),Y\n\tINY\n\tINX"));
+    }
+
+    #[test]
+    fn complex_assignment_test2() {
+        let args = sargs(1);
+        let input = "char *ptr2[2]; char *ptr1; void main() { ptr1 = ptr2[X++]; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA ptr2,X\n\tSTA ptr1\n\tLDA ptr2+2,X\n\tSTA ptr1+1\n\tINX"));
+    }
+
+    #[test]
+    fn complex_assignment_test3() {
+        let args = sargs(1);
+        let input =
+            "char *ptr2[2]; char *ptr1; char index[2]; void main() { ptr1 = ptr2[X = index[X]]; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "LDA index,X\n\tTAX\n\tLDA ptr2,X\n\tSTA ptr1\n\tLDA ptr2+2,X\n\tSTA ptr1+1"
+        ));
+    }
+
+    #[test]
+    fn complex_assignment_test4() {
+        let args = sargs(1);
+        let input =
+            "char *ptr2[2]; char *ptr1; char index[2]; void main() { ptr1 = ptr2[index[X]]; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "STY cctmp\n\tLDY index,X\n\tLDA ptr2,Y\n\tSTA ptr1\n\tLDY index,X\n\tLDA ptr2+2,Y\n\tSTA ptr1+1\n\tLDY cctmp"
+        ));
     }
 }
