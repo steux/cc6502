@@ -626,7 +626,7 @@ impl<'a> GeneratorState<'a> {
                             self.generate_expr(sub, pos, false, false)?
                         }
                         _ => {
-                            if high_byte {
+                            if high_byte || second_time {
                                 match self.sub_output.take() {
                                     Some(e) => e,
                                     None => {
