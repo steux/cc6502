@@ -716,26 +716,30 @@ impl<'a> GeneratorState<'a> {
                                         val,
                                     ))
                                 }
-                            } else {
-                                if tmp_in_use || self.tmp_in_use || self.saved_y {
-                                    Err(self
-                                        .compiler_state
-                                        .syntax_error("Code too complex for the compiler", pos))
-                                } else if let Some(dummy_pos) = dummy {
-                                    self.tmp_in_use = true;
-                                    if self.warnings.iter().any(|s| s == "all" || s == "perf") {
-                                        self.compiler_state
-                                            .warning("Performance hit. Y has to be saved", pos);
-                                    }
-                                    self.asm_save_y(dummy_pos);
-                                    self.asm(LDY, &sub_output, pos, false)?;
-                                    self.saved_y = true;
-                                    Ok(ExprType::AbsoluteY(variable.into()))
-                                } else {
-                                    Err(self
-                                        .compiler_state
-                                        .syntax_error("Code too complex for the compiler", pos))
+                            } else if v.var_type == VariableType::Char
+                                || v.var_type == VariableType::Short
+                            {
+                                Err(self
+                                    .compiler_state
+                                    .syntax_error("Subscript not allowed on variables", pos))
+                            } else if tmp_in_use || self.tmp_in_use || self.saved_y {
+                                Err(self
+                                    .compiler_state
+                                    .syntax_error("Code too complex for the compiler", pos))
+                            } else if let Some(dummy_pos) = dummy {
+                                self.tmp_in_use = true;
+                                if self.warnings.iter().any(|s| s == "all" || s == "perf") {
+                                    self.compiler_state
+                                        .warning("Performance hit. Y has to be saved", pos);
                                 }
+                                self.asm_save_y(dummy_pos);
+                                self.asm(LDY, &sub_output, pos, false)?;
+                                self.saved_y = true;
+                                Ok(ExprType::AbsoluteY(variable.into()))
+                            } else {
+                                Err(self
+                                    .compiler_state
+                                    .syntax_error("Code too complex for the compiler", pos))
                             }
                         }
                         _ => {
