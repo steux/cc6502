@@ -117,8 +117,10 @@ impl<'a> GeneratorState<'a> {
                     self.carry_flag_ok = false;
                     Ok(ExprType::X)
                 }
-                ExprType::Nothing => unreachable!(),
-                ExprType::Label(_) => unreachable!(),
+                ExprType::Nothing => Err(self
+                    .compiler_state
+                    .syntax_error("Can't assign void to variable", pos)),
+                ExprType::Label(_) => Err(self.compiler_state.syntax_error("Syntax error", pos)),
             },
             ExprType::Y => {
                 if self.saved_y {
