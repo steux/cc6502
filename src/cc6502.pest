@@ -49,13 +49,14 @@ holeydma = { "holeydma" }
 noholeydma = { "noholeydma" }
 screencode = { "screencode" }
 nopagecross = { "nopagecross" }
+deref_id_name = @{ "&" ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 global_id = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
 local_id = { pointer* ~ id_name ~ array_spec? ~ ("=" ~ expr_init_value)? }
 array_spec = { "[" ~ calc_expr? ~ "]" }
 var_def = { var_ptr | calc_expr | array_def | quoted_string }
 array_def = { "{" ~ ((var_ptr | calc_expr | quoted_string) ~ ",")* ~ (var_ptr | calc_expr | quoted_string) ~ "}" }
-var_ptr = { id_name ~ ptr_offset? ~ (ptr_hi | ptr_low)? }
+var_ptr = { (id_name | deref_id_name) ~ ptr_offset? ~ (ptr_hi | ptr_low)? }
 ptr_hi = { ">>" ~ calc_expr }
 ptr_low = { "&" ~ calc_expr }
 ptr_offset = { "+" ~ int }
