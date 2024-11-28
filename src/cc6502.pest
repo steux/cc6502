@@ -54,8 +54,8 @@ id_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 global_id = { pointer* ~ var_const? ~ id_name ~ array_spec? ~ ("=" ~ var_def)? }
 local_id = { pointer* ~ id_name ~ array_spec? ~ ("=" ~ expr_init_value)? }
 array_spec = { "[" ~ calc_expr? ~ "]" }
-var_def = { var_ptr | calc_expr | array_def | quoted_string }
-array_def = { "{" ~ ((var_ptr | calc_expr | quoted_string) ~ ",")* ~ (var_ptr | calc_expr | quoted_string) ~ "}" }
+var_def = { calc_expr | var_ptr | array_def | quoted_string }
+array_def = { "{" ~ ((calc_expr | var_ptr | quoted_string) ~ ",")* ~ (calc_expr | var_ptr | quoted_string) ~ "}" }
 var_ptr = { (id_name | deref_id_name) ~ ptr_offset? ~ (ptr_hi | ptr_low)? }
 ptr_hi = { ">>" ~ calc_expr }
 ptr_low = { "&" ~ calc_expr }
@@ -191,4 +191,5 @@ quoted_string = { ("@" ~ decimal ~ "@")+ } // Actual definition after C preproce
 calc_expr       =   { calc_prefix* ~ calc_primary ~ (calc_infix ~ calc_prefix* ~ calc_primary)* }
     calc_infix    =  _{ mul | div | add | sub | bls | brs | land | lor | and | xor | or | gte | gt | lte | lt | eq | neq | not | bnot | ternary_cond1 | ternary_cond2 }
     calc_prefix   =  _{ neg | not | bnot }
-    calc_primary  =  _{ int | "(" ~ calc_expr ~ ")" }
+    calc_primary  =  _{ int | "(" ~ calc_expr ~ ")" | calc_sizeof}
+    calc_sizeof   =  { "sizeof" ~ "(" ~ (primary_var_type | identifier) ~ ")" }

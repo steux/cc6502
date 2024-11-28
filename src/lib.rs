@@ -1106,6 +1106,34 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDX #1\n\tLDY #2"));
     }
+    
+    #[test]
+    fn sizeof_test3() {
+        let args = sargs(1);
+        let input =
+            "char ptr[10]; const char b = sizeof(ptr); void main() {}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "EQU $a"
+        ));
+    }
+
+    #[test]
+    fn sizeof_test4() {
+        let args = sargs(1);
+        let input =
+            "const char b = sizeof(char*); void main() {}";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(
+            "EQU $2"
+        ));
+    }
 
     #[test]
     fn minusminus_statement_test() {

@@ -944,12 +944,60 @@ impl<'a> CompilerState<'a> {
         }
     }
 
+    fn parse_sizeof(&self, mut pairs: Pairs<'a, Rule>) -> Result<i32, Error> {
+        let p = pairs.next().unwrap();
+        match p.as_rule() {
+            Rule::primary_var_type => {
+                let s = p.as_str();
+                if s.contains("*") {
+                    Ok(2)
+                } else if s == "char" {
+                    Ok(1)
+                } else if s == "short" || s == "short int" || s == "int" {
+                    Ok(2)
+                } else {
+                    let pos = p.as_span().start();
+                    Err(self.syntax_error("Sizeof only works on variables and simple types", pos))
+                }
+            }
+            Rule::identifier => {
+                let s = p.as_str();
+                let var = self.variables.get(s);
+                match var {
+                    Some(v) => match v.var_type {
+                        VariableType::CharPtr => {
+                            if v.var_const {
+                                Ok(v.size as i32)
+                            } else {
+                                Ok(2)
+                            }
+                        }
+                        VariableType::ShortPtr | VariableType::CharPtrPtr => {
+                            Ok((v.size * 2) as i32)
+                        }
+                        VariableType::Char => Ok(1),
+                        VariableType::Short => Ok(2),
+                    },
+                    None => {
+                        let pos = p.as_span().start();
+                        Err(self
+                            .syntax_error("Sizeof only works on variables and simple types", pos))
+                    }
+                }
+            }
+            _ => {
+                unreachable!()
+            }
+        }
+    }
+
     fn parse_calc(&self, pairs: Pairs<'a, Rule>) -> Result<i32, Error> {
         self.calculator
             .map_primary(|primary| -> Result<i32, Error> {
                 match primary.as_rule() {
                     Rule::int => Ok(parse_int(primary.into_inner().next().unwrap())),
                     Rule::calc_expr => Ok(self.parse_calc(primary.into_inner())?),
+                    Rule::calc_sizeof => Ok(self.parse_sizeof(primary.into_inner())?),
                     rule => unreachable!("parse_calc expected atom, found {:?}", rule),
                 }
             })
