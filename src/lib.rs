@@ -1106,33 +1106,27 @@ char i; void main() { i = one; }";
         print!("{:?}", result);
         assert!(result.contains("LDX #1\n\tLDY #2"));
     }
-    
+
     #[test]
     fn sizeof_test3() {
         let args = sargs(1);
-        let input =
-            "char ptr[10]; const char b = sizeof(ptr); void main() {}";
+        let input = "char ptr[10]; const char b = sizeof(ptr); void main() {}";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains(
-            "EQU $a"
-        ));
+        assert!(result.contains("EQU $a"));
     }
 
     #[test]
     fn sizeof_test4() {
         let args = sargs(1);
-        let input =
-            "const char b = sizeof(char*); void main() {}";
+        let input = "const char b = sizeof(char*); void main() {}";
         let mut output = Vec::new();
         compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
         let result = str::from_utf8(&output).unwrap();
         print!("{:?}", result);
-        assert!(result.contains(
-            "EQU $2"
-        ));
+        assert!(result.contains("EQU $2"));
     }
 
     #[test]
@@ -1897,5 +1891,16 @@ void main() { fn2(); fn3(); }
         assert!(result.contains(
             "STY cctmp\n\tLDY index,X\n\tLDA ptr2,Y\n\tSTA ptr1\n\tLDY index,X\n\tLDA ptr2+2,Y\n\tSTA ptr1+1\n\tLDY cctmp"
         ));
+    }
+
+    #[test]
+    fn preprocessor_test1() {
+        let args = sargs(1);
+        let input = "#define pp(x) foo##x\nchar pp(0);\nvoid main() { X = pp(0); }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDX foo0"));
     }
 }

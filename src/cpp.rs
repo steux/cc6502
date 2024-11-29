@@ -1,6 +1,6 @@
 /*
-    cc6502 - a subset of C compiler for the 6502 processor 
-    Copyright (C) 2023 Bruno STEUX 
+    cc6502 - a subset of C compiler for the 6502 processor
+    Copyright (C) 2023 Bruno STEUX
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@ use crate::error::Error;
 extern crate regex;
 
 use std::collections::BTreeMap;
-use std::io::{BufReader, BufRead, Write};
 use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 use log::debug;
@@ -46,12 +46,12 @@ pub struct Context {
     pub include_directories: Vec<String>,
     defs: BTreeMap<String, String>,
     regex_sets: Vec<RegexSet>,
-    defs_ex: Vec::<Vec::<String>>, // Used for undefine to find the vector
-    defs_ex_ex: Vec::<Vec::<String>>, // Used to contrust regex_set
-    regexes: Vec::<Vec::<(Regex, String)>>,
+    defs_ex: Vec<Vec<String>>,    // Used for undefine to find the vector
+    defs_ex_ex: Vec<Vec<String>>, // Used to contrust regex_set
+    regexes: Vec<Vec<(Regex, String)>>,
     define_regex: Regex,
     pub literal_strings: Vec<String>,
-    literal_strings_number: u32
+    literal_strings_number: u32,
 }
 
 impl Context {
@@ -76,7 +76,7 @@ impl Context {
         c.regexes.push(Vec::new());
         c
     }
-    /// Defines a macro within a context. 
+    /// Defines a macro within a context.
     ///
     pub fn define<N: Into<String>, V: Into<String>>(&mut self, name: N, value: V) -> &mut Self {
         let n = name.into();
@@ -87,7 +87,8 @@ impl Context {
         self.defs_ex.last_mut().unwrap().push(n);
         self.defs_ex_ex.last_mut().unwrap().push(rstring);
         self.regexes.last_mut().unwrap().push((regex, v));
-        *self.regex_sets.last_mut().unwrap() = RegexSet::new(self.defs_ex_ex.last().unwrap()).unwrap();
+        *self.regex_sets.last_mut().unwrap() =
+            RegexSet::new(self.defs_ex_ex.last().unwrap()).unwrap();
         if self.defs_ex.last().unwrap().len() >= 100 {
             // Create a new regex_set
             self.regex_sets.push(RegexSet::empty());
@@ -105,7 +106,8 @@ impl Context {
         self.defs_ex.last_mut().unwrap().push(n);
         self.defs_ex_ex.last_mut().unwrap().push(value.0);
         self.regexes.last_mut().unwrap().push((regex, value.1));
-        *self.regex_sets.last_mut().unwrap() = RegexSet::new(self.defs_ex_ex.last().unwrap()).unwrap();
+        *self.regex_sets.last_mut().unwrap() =
+            RegexSet::new(self.defs_ex_ex.last().unwrap()).unwrap();
         if self.defs_ex.last().unwrap().len() >= 100 {
             // Create a new regex_set
             self.regex_sets.push(RegexSet::empty());
@@ -116,7 +118,7 @@ impl Context {
         self
     }
 
-    /// 
+    ///
     pub fn undefine<N: Into<String>>(&mut self, name: N) -> &mut Self {
         let n = name.into();
         self.defs.remove(&n);
@@ -126,13 +128,15 @@ impl Context {
             let mut found = false;
             i = 0;
             for j in defs_ex.iter() {
-                if j.eq(&n) { 
+                if j.eq(&n) {
                     found = true;
-                    break; 
+                    break;
                 }
                 i += 1;
             }
-            if found { break; }
+            if found {
+                break;
+            }
             k += 1;
         }
         self.defs_ex[k].remove(i);
@@ -154,7 +158,9 @@ impl Context {
             changed = false;
             for (i, set) in self.regex_sets.iter().enumerate() {
                 for idx in set.matches(s).into_iter() {
-                    let x = self.regexes[i][idx].0.replace_all(&res, &self.regexes[i][idx].1);
+                    let x = self.regexes[i][idx]
+                        .0
+                        .replace_all(&res, &self.regexes[i][idx].1);
                     if let Cow::Owned(z) = x {
                         res = z.to_string();
                         changed = true;
@@ -184,21 +190,26 @@ impl Context {
         if term
             .chars()
             .next()
-            .ok_or_else(|| { 
+            .ok_or_else(|| {
                 let filename = self.current_filename.clone();
                 let included_in = self.includes_stack.last().cloned();
                 Error::Syntax {
-                    filename, included_in, line,
-                    msg: "Expected term, found nothing".to_string() }
+                    filename,
+                    included_in,
+                    line,
+                    msg: "Expected term, found nothing".to_string(),
+                }
             })?
-        .is_ascii_digit()
+            .is_ascii_digit()
         {
             Ok(term == "1")
         } else {
             let filename = self.current_filename.clone();
             let included_in = self.includes_stack.last().cloned();
             Err(Error::Syntax {
-                filename, included_in, line,
+                filename,
+                included_in,
+                line,
                 msg: "Undefined identifier".to_string(),
             })
         }
@@ -231,7 +242,9 @@ impl Context {
             let filename = self.current_filename.clone();
             let included_in = self.includes_stack.last().cloned();
             return Err(Error::Syntax {
-                filename, included_in, line,
+                filename,
+                included_in,
+                line,
                 msg: "Expected end-of-line".to_string(),
             });
         }
@@ -268,20 +281,23 @@ pub fn process<I: BufRead, O: Write>(
     mut input: I,
     output: &mut O,
     context: &mut Context,
-    asm: bool
-) -> Result<Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>, Error> {
+    asm: bool,
+) -> Result<Vec<(std::rc::Rc<String>, u32, Option<(std::rc::Rc<String>, u32)>)>, Error> {
     let mut buf = String::new();
     let mut uncommented_buf = String::new();
     let mut stack = Vec::new();
     let mut state = State::Active;
-    let mut lines = Vec::<(std::rc::Rc::<String>,u32,Option<(std::rc::Rc::<String>,u32)>)>::new();
+    let mut lines = Vec::<(std::rc::Rc<String>, u32, Option<(std::rc::Rc<String>, u32)>)>::new();
     let mut line = 0;
     let filename = context.current_filename.clone();
     let filename_rc = std::rc::Rc::<String>::new(filename.clone());
     let mut in_multiline_comments = false;
 
     let (included_in, included_in_rc) = match context.includes_stack.last() {
-        Some(s) => (Some(s.clone()), Some((std::rc::Rc::<String>::new(s.0.clone()), s.1))),
+        Some(s) => (
+            Some(s.clone()),
+            Some((std::rc::Rc::<String>::new(s.0.clone()), s.1)),
+        ),
         None => (None, None),
     };
 
@@ -320,15 +336,15 @@ pub fn process<I: BufRead, O: Write>(
                     Some(string) => {
                         in_multiline_comments = false;
                         remaining = string;
-                        if !remaining.is_empty() { 
+                        if !remaining.is_empty() {
                             if remaining.eq("\n") {
                                 remaining = "";
                             } else {
-                                insert_it = true; 
+                                insert_it = true;
                             }
                         }
-                    },
-                    _ => break
+                    }
+                    _ => break,
                 }
             } else {
                 let mut s = remaining.split("//").next().unwrap().splitn(2, "/*");
@@ -365,10 +381,14 @@ pub fn process<I: BufRead, O: Write>(
                         if !found {
                             // This is an unterminated string. Forbidden
                             return Err(Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Unterminated string".to_string() })
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Unterminated string".to_string(),
+                            });
                         } else {
-                            uncommented_buf.push_str(&format!("{}@{}@", left, context.literal_strings_number));
+                            uncommented_buf
+                                .push_str(&format!("{}@{}@", left, context.literal_strings_number));
                             context.literal_strings_number += 1;
                             let s = remaining[left.len() + 1..cursor].to_string();
                             debug!("String literal: {:?}", &s);
@@ -377,28 +397,35 @@ pub fn process<I: BufRead, O: Write>(
                         }
                     } else {
                         uncommented_buf.push_str(s2);
-                        if uncommented_buf.is_empty() { insert_it = false; }
+                        if uncommented_buf.is_empty() {
+                            insert_it = false;
+                        }
                         match s.next() {
                             Some(string) => {
                                 in_multiline_comments = true;
                                 remaining = string;
-                            },
-                            _ => break
+                            }
+                            _ => break,
                         }
                     }
                 } else {
                     uncommented_buf.push_str(s2);
-                    if uncommented_buf.is_empty() { insert_it = false; }
+                    if uncommented_buf.is_empty() {
+                        insert_it = false;
+                    }
                     match s.next() {
                         Some(string) => {
                             in_multiline_comments = true;
                             remaining = string;
-                        },
-                        _ => break
+                        }
+                        _ => break,
                     }
                 }
             }
-            debug!("Line: {}, Uncommented: {:?}, Remaining: {:?}, insert it: {:?}", line, uncommented_buf, remaining, insert_it);
+            debug!(
+                "Line: {}, Uncommented: {:?}, Remaining: {:?}, insert it: {:?}",
+                line, uncommented_buf, remaining, insert_it
+            );
         }
         if insert_it {
             let substr = uncommented_buf.trim();
@@ -417,9 +444,11 @@ pub fn process<I: BufRead, O: Write>(
                     Some(x) => x,
                     _ => {
                         return Err(Error::Syntax {
-                            filename: filename.clone(), included_in: included_in.clone(), line,
-                            msg: "Expected something after `#ifdef`".to_string() })
-
+                            filename: filename.clone(),
+                            included_in: included_in.clone(),
+                            line,
+                            msg: "Expected something after `#ifdef`".to_string(),
+                        })
                     }
                 };
                 stack.push(state);
@@ -444,9 +473,12 @@ pub fn process<I: BufRead, O: Write>(
                     Some(x) => x,
                     _ => {
                         return Err(Error::Syntax {
-                            filename: filename.clone(), included_in: included_in.clone(), line,
-                            msg: "Expected something after `#ifndef`".to_string() })
-                        }
+                            filename: filename.clone(),
+                            included_in: included_in.clone(),
+                            line,
+                            msg: "Expected something after `#ifndef`".to_string(),
+                        })
+                    }
                 };
                 stack.push(state);
                 if state == State::Active {
@@ -471,18 +503,24 @@ pub fn process<I: BufRead, O: Write>(
                         Some(x) => x,
                         _ => {
                             return Err(Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Expected something after `#undef`".to_string() })
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Expected something after `#undef`".to_string(),
+                            })
                         }
                     };
 
                     if context.get_macro(expr).is_none() {
                         return Err(Error::Syntax {
-                            filename: filename.clone(), included_in: included_in.clone(), line,
-                            msg: format!("Macro {} is not defined", expr)});
+                            filename: filename.clone(),
+                            included_in: included_in.clone(),
+                            line,
+                            msg: format!("Macro {} is not defined", expr),
+                        });
                     }
                     context.undefine(expr);
-                } 
+                }
             } else if substr.starts_with("#define") {
                 if state == State::Active {
                     let mut parts = substr.split("//").next().unwrap().splitn(2, ' ');
@@ -495,17 +533,23 @@ pub fn process<I: BufRead, O: Write>(
                         }
                     });
                     let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                        filename: filename.clone(), included_in: included_in.clone(), line,
-                        msg: "Expected macro after `#define`".to_string() })?;
+                        filename: filename.clone(),
+                        included_in: included_in.clone(),
+                        line,
+                        msg: "Expected macro after `#define`".to_string(),
+                    })?;
                     debug!("expr: {:?}", expr);
-                    
+
                     let caps = context.define_regex.captures(expr).unwrap();
                     debug!("caps: {:?}", caps);
                     let mcro = &caps[1];
                     if context.get_macro(mcro).is_some() {
                         return Err(Error::Syntax {
-                            filename: filename.clone(), included_in: included_in.clone(), line,
-                            msg: format!("Macro {} already defined", mcro)});
+                            filename: filename.clone(),
+                            included_in: included_in.clone(),
+                            line,
+                            msg: format!("Macro {} already defined", mcro),
+                        });
                     }
                     let buf = &caps[3];
                     let mut value = context.replace_all(buf);
@@ -514,22 +558,27 @@ pub fn process<I: BufRead, O: Write>(
                     } else {
                         let mut rex = format!("\\b{}\\(", mcro);
                         let params = caps.get(2).unwrap().as_str();
-                        if params != "" {
+                        if !params.is_empty() {
                             for v in caps.get(2).unwrap().as_str().split(',') {
                                 let vx = v.trim_start();
                                 let re = Regex::new(&format!("\\b{}\\b", vx)).unwrap();
-                                value = re.replace_all(&value, format!("$${}",vx)).to_string();
+                                value = re.replace_all(&value, format!("$${}", vx)).to_string();
                                 //rex += &format!("(?P<{}>[^,]*?),", vx);
-                                rex += &format!(r"(?P<{}>(?:[^,)(]|\((?:[^)(]|\((?:[^)(]|\((?:[^)(]|\([^)(]*\))*\))*\))*\))*),", vx);
+                                rex += &format!(
+                                    r"(?P<{}>(?:[^,)(]|\((?:[^)(]|\((?:[^)(]|\((?:[^)(]|\([^)(]*\))*\))*\))*\))*),",
+                                    vx
+                                );
                             }
+                            // Double hash management
                             rex = rex.strip_suffix(',').unwrap().to_string();
                         }
                         rex += "\\)";
+                        value = value.replace("##", ""); // Double hash
                         debug!("regex:{}", &rex);
                         context.define_ex(mcro, (rex, value));
                     }
                 }
-            } else { 
+            } else {
                 let new_line = context.replace_all(&uncommented_buf);
                 let substr = new_line.trim();
                 if substr.starts_with('#') {
@@ -548,22 +597,47 @@ pub fn process<I: BufRead, O: Write>(
                             if state == State::Active {
                                 // Get filename
                                 let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                                    filename: filename.clone(), included_in: included_in.clone(), line,
-                                    msg: "Expected filename after `#include`".to_string() })?;
+                                    filename: filename.clone(),
+                                    included_in: included_in.clone(),
+                                    line,
+                                    msg: "Expected filename after `#include`".to_string(),
+                                })?;
                                 let mut chars = expr.chars();
                                 let separator = chars.next();
                                 let end_separator = match separator {
                                     Some('<') => '>',
                                     Some('"') => '"',
-                                    _ => return Err(Error::Syntax { filename: filename.clone(), included_in: included_in.clone(), line, msg: "Expected < or \" in #include filename spec".to_string() })
+                                    _ => {
+                                        return Err(Error::Syntax {
+                                            filename: filename.clone(),
+                                            included_in: included_in.clone(),
+                                            line,
+                                            msg: "Expected < or \" in #include filename spec"
+                                                .to_string(),
+                                        })
+                                    }
                                 };
                                 let mut fname = String::new();
                                 loop {
                                     let nc = chars.next();
                                     match nc {
-                                        Some(x) => if x == end_separator { break; } else { fname.push(x); }, 
-                                        None => return Err(Error::Syntax { filename: filename.clone(), included_in: included_in.clone(), line, msg: "Missing end separator in #include fname".to_string() })
-                                    }    
+                                        Some(x) => {
+                                            if x == end_separator {
+                                                break;
+                                            } else {
+                                                fname.push(x);
+                                            }
+                                        }
+                                        None => {
+                                            return Err(Error::Syntax {
+                                                filename: filename.clone(),
+                                                included_in: included_in.clone(),
+                                                line,
+                                                msg: "Missing end separator in #include fname"
+                                                    .to_string(),
+                                            })
+                                        }
+                                    }
                                 }
 
                                 // Open include file
@@ -578,16 +652,22 @@ pub fn process<I: BufRead, O: Write>(
                                             found = true;
                                             break;
                                         }
-                                    }    
+                                    }
                                     if !found {
-                                        return Err(Error::Syntax { 
-                                            filename: filename.clone(), included_in: included_in.clone(), line, msg: format!("Included file {fname} not found")});
+                                        return Err(Error::Syntax {
+                                            filename: filename.clone(),
+                                            included_in: included_in.clone(),
+                                            line,
+                                            msg: format!("Included file {fname} not found"),
+                                        });
                                     }
                                 }
 
                                 // Process file
                                 let f = File::open(path)?;
-                                let assembler = fname.ends_with(".inc") || fname.ends_with(".a") || fname.ends_with(".asm");
+                                let assembler = fname.ends_with(".inc")
+                                    || fname.ends_with(".a")
+                                    || fname.ends_with(".asm");
                                 if assembler {
                                     lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                                     output.write_all("=== ASSEMBLER BEGIN ===\n".as_bytes())?;
@@ -605,11 +685,15 @@ pub fn process<I: BufRead, O: Write>(
                                     lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                                     output.write_all("==== ASSEMBLER END ====\n".as_bytes())?;
                                 }
-                            } },
+                            }
+                        }
                         "#if" => {
                             let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Expected expression after `#if`".to_string() })?;
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Expected expression after `#if`".to_string(),
+                            })?;
                             stack.push(state);
                             if state == State::Active {
                                 if !context.evaluate(expr, line)? {
@@ -617,59 +701,85 @@ pub fn process<I: BufRead, O: Write>(
                                 }
                             } else {
                                 state = State::Skip;
-                            } },
+                            }
+                        }
                         "#elif" => {
                             let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line, 
-                                msg: "Expected expression after `#elif`".to_string() })?;
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Expected expression after `#elif`".to_string(),
+                            })?;
                             if state == State::Inactive {
                                 if context.evaluate(expr, line)? {
                                     state = State::Active;
                                 }
                             } else {
                                 state = State::Skip;
-                            } },
+                            }
+                        }
                         "#else" => {
                             if maybe_expr.is_some() {
                                 return Err(Error::Syntax {
-                                    filename: filename.clone(), included_in: included_in.clone(), line,
-                                    msg: "Unexpected expression after `#else`".to_string() });
+                                    filename: filename.clone(),
+                                    included_in: included_in.clone(),
+                                    line,
+                                    msg: "Unexpected expression after `#else`".to_string(),
+                                });
                             }
                             if state == State::Inactive {
                                 state = State::Active;
                             } else {
                                 state = State::Skip;
-                            } },
+                            }
+                        }
                         "#endif" => {
                             if maybe_expr.is_some() {
                                 return Err(Error::Syntax {
-                                    filename: filename.clone(), included_in: included_in.clone(), line,
-                                    msg: "Unexpected expression after `#else`".to_string() });
+                                    filename: filename.clone(),
+                                    included_in: included_in.clone(),
+                                    line,
+                                    msg: "Unexpected expression after `#else`".to_string(),
+                                });
                             }
                             state = stack.pop().ok_or_else(|| Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Unexpected `#endif` with no matching `#if`".to_string() })?;
-                        },
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Unexpected `#endif` with no matching `#if`".to_string(),
+                            })?;
+                        }
                         "#error" => {
                             let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Expected error text after `#error`".to_string() })?;
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Expected error text after `#error`".to_string(),
+                            })?;
                             return Err(Error::Compiler {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: expr.to_string() });
-                        },
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: expr.to_string(),
+                            });
+                        }
                         _ => {
                             return Err(Error::Syntax {
-                                filename: filename.clone(), included_in: included_in.clone(), line,
-                                msg: "Unrecognised preprocessor directive".to_string() });
+                                filename: filename.clone(),
+                                included_in: included_in.clone(),
+                                line,
+                                msg: "Unrecognised preprocessor directive".to_string(),
+                            });
                         }
                     }
                 } else if state == State::Active {
                     lines.push((filename_rc.clone(), line, included_in_rc.clone()));
                     output.write_all(new_line.as_bytes())?;
-                    if !new_line.ends_with('\n') && has_lf { output.write_all(b"\n")?; }
+                    if !new_line.ends_with('\n') && has_lf {
+                        output.write_all(b"\n")?;
+                    }
                 }
-            } 
+            }
         }
         buf.clear();
     }
@@ -1062,83 +1172,116 @@ mod tests {
         "
         );
     }
-    
+
     #[test]
     fn multiline_comments() {
-        assert_eq!(process_str("
+        assert_eq!(
+            process_str(
+                "
      #if FOO
      foo text /* Bobby */
      #endif
-     bar text", Context::new("string").define("FOO", "1")).unwrap(), "
+     bar text",
+                Context::new("string").define("FOO", "1")
+            )
+            .unwrap(),
+            "
      foo text 
-     bar text");
-
+     bar text"
+        );
     }
 
     #[test]
     fn define() {
-    assert_eq!(process_str("#define ZOBI
+        assert_eq!(
+            process_str(
+                "#define ZOBI
      #define FOO FOO_BAR // JR
      #ifdef FOO
      foo text
      #endif
      FOO /*bar text
      Dallas
-     */ Ewing", &mut Context::new("string")).unwrap(), "     foo text
+     */ Ewing",
+                &mut Context::new("string")
+            )
+            .unwrap(),
+            "     foo text
      FOO_BAR 
- Ewing");
+ Ewing"
+        );
     }
 
     #[test]
     fn lines_mapping() {
         let mut output = Vec::new();
-        let result = process("#define ZOBI
+        let result = process(
+            "#define ZOBI
             #define FOO FOO_BAR 
             #ifdef FOO
                 foo text
             #endif
-            FOO bar text".as_bytes(), &mut output, &mut Context::new("string"), false);
-        assert_eq!(result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(), &[4, 6]);
+            FOO bar text"
+                .as_bytes(),
+            &mut output,
+            &mut Context::new("string"),
+            false,
+        );
+        assert_eq!(
+            result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(),
+            &[4, 6]
+        );
     }
-    
+
     #[test]
     fn lines_mapping2() {
         let mut output = Vec::new();
-        let result = process("/* Hello */
-            world".as_bytes(), &mut output, &mut Context::new("string"), false);
-        assert_eq!(result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(), &[2]);
+        let result = process(
+            "/* Hello */
+            world"
+                .as_bytes(),
+            &mut output,
+            &mut Context::new("string"),
+            false,
+        );
+        assert_eq!(
+            result.unwrap().iter().map(|x| x.1).collect::<Vec::<u32>>(),
+            &[2]
+        );
     }
-    
+
     #[test]
     fn error() {
         let mut context = Context::new("string");
         context.current_filename = "string".to_string();
-        let result = process_str("#error This is an error
-            foo bar", &mut context);
-        assert_eq!(result.err().unwrap().to_string(), 
+        let result = process_str(
+            "#error This is an error
+            foo bar",
+            &mut context,
+        );
+        assert_eq!(
+            result.err().unwrap().to_string(),
             "Compiler error: This is an error on line 1 of string".to_string()
-            );
+        );
     }
-    
+
     #[test]
     fn redefine() {
         let mut context = Context::new("string");
         context.current_filename = "string".to_string();
         let result = process_str("#define foobar\n#define foobar", &mut context);
-        assert_eq!(result.err().unwrap().to_string(), 
+        assert_eq!(
+            result.err().unwrap().to_string(),
             "Syntax error: Macro foobar already defined on line 2 of string".to_string()
-            );
+        );
     }
-    
+
     #[test]
     fn define_args() {
         let mut context = Context::new("string");
         context.current_filename = "string".to_string();
         let result = process_str("#define add(a,b) a+b\nadd(1,2)", &mut context);
         println!("{:?}", result);
-        assert_eq!(result.unwrap(), 
-            "1+2".to_string()
-            );
+        assert_eq!(result.unwrap(), "1+2".to_string());
     }
 }
-

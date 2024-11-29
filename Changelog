@@ -12,6 +12,7 @@ v1.0.25 (07/22/2024) :
     - Removed constant time code in order to be comatible with the latest Rust compiler
     - Local arrays are allocated in the right bank	
     - Corrected optimizer bug with DEC and INC instructions
+    - Added ## support in preprocessor
 
 v1.0.24 (04/20/2024) :
     - Corrected a bug wrt carry flags
