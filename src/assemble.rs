@@ -536,14 +536,20 @@ impl AssemblyCode {
                                             } else if i1.mnemonic == AsmMnemonic::STA {
                                                 if let Some(line) = iter.peek() {
                                                     if let AsmLine::Instruction(i2) = line {
-                                                        if i2.mnemonic == AsmMnemonic::LDA {
+                                                        if i2.mnemonic == AsmMnemonic::LDA
+                                                            || i2.mnemonic == AsmMnemonic::LDX
+                                                            || i2.mnemonic == AsmMnemonic::LDY
+                                                        {
                                                             remove_second = !inst.protected;
                                                         }
                                                     } else if let AsmLine::Dummy = line {
                                                         if let Some(AsmLine::Instruction(i3)) =
                                                             iter.peek()
                                                         {
-                                                            if i3.mnemonic == AsmMnemonic::LDA {
+                                                            if i3.mnemonic == AsmMnemonic::LDA
+                                                                || i3.mnemonic == AsmMnemonic::LDX
+                                                                || i3.mnemonic == AsmMnemonic::LDY
+                                                            {
                                                                 remove_second = !inst.protected;
                                                             }
                                                         }
