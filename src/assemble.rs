@@ -241,7 +241,7 @@ impl AssemblyCode {
         let mut accumulator = None;
         let mut x_register = None;
         let mut y_register = None;
-        let mut iter = self.code.iter_mut();
+        let mut iter = itertools::multipeek(self.code.iter_mut());
         let mut first = iter.next();
         let mut flags = FlagsState::Unknown;
 
@@ -278,6 +278,7 @@ impl AssemblyCode {
             let mut remove_second = false;
             let mut swap_both = false;
 
+            // Remove JMP to the folliwing label
             if let Some(AsmLine::Instruction(i1)) = &first {
                 if let Some(AsmLine::Label(l)) = &second {
                     if i1.mnemonic == AsmMnemonic::JMP && &i1.dasm_operand == l && !i1.protected {
@@ -327,6 +328,8 @@ impl AssemblyCode {
                             } else if inst.mnemonic == AsmMnemonic::LDY {
                                 y_register = Some(inst.dasm_operand.clone());
                                 flags = FlagsState::Y;
+                            } else {
+                                flags = FlagsState::Unknown;
                             }
                         } else {
                             unreachable!();
@@ -443,62 +446,65 @@ impl AssemblyCode {
                     }
                     // Check CMP and remove the branck if the result is obvious
                     if let Some(r) = &accumulator {
-                        if r.starts_with("#") {
-                            if i1.mnemonic == AsmMnemonic::CMP && i1.dasm_operand.starts_with('#') {
-                                // The result IS obvious
-                                match i2.mnemonic {
-                                    AsmMnemonic::BNE => {
-                                        if *r == i1.dasm_operand {
-                                            remove_both = true;
-                                        }
+                        if r.starts_with("#")
+                            && i1.mnemonic == AsmMnemonic::CMP
+                            && i1.dasm_operand.starts_with('#')
+                        {
+                            // The result IS obvious
+                            match i2.mnemonic {
+                                AsmMnemonic::BNE => {
+                                    if *r == i1.dasm_operand {
+                                        remove_both = true;
                                     }
-                                    AsmMnemonic::BEQ => {
-                                        if *r != i1.dasm_operand {
-                                            remove_both = true;
-                                        }
-                                    }
-                                    _ => (),
                                 }
+                                AsmMnemonic::BEQ => {
+                                    if *r != i1.dasm_operand {
+                                        remove_both = true;
+                                    }
+                                }
+                                _ => (),
                             }
                         }
                     }
                     if let Some(r) = &x_register {
-                        if r.starts_with("#") {
-                            if i1.mnemonic == AsmMnemonic::CPX && i1.dasm_operand.starts_with('#') {
-                                // The result IS obvious
-                                match i2.mnemonic {
-                                    AsmMnemonic::BNE => {
-                                        if *r == i1.dasm_operand {
-                                            remove_both = true;
-                                        }
+                        if r.starts_with("#")
+                            && i1.mnemonic == AsmMnemonic::CPX
+                            && i1.dasm_operand.starts_with('#')
+                        {
+                            // The result IS obvious
+                            match i2.mnemonic {
+                                AsmMnemonic::BNE => {
+                                    if *r == i1.dasm_operand {
+                                        remove_both = true;
                                     }
-                                    AsmMnemonic::BEQ => {
-                                        if *r != i1.dasm_operand {
-                                            remove_both = true;
-                                        }
-                                    }
-                                    _ => (),
                                 }
+                                AsmMnemonic::BEQ => {
+                                    if *r != i1.dasm_operand {
+                                        remove_both = true;
+                                    }
+                                }
+                                _ => (),
                             }
                         }
                     }
                     if let Some(r) = &y_register {
-                        if r.starts_with("#") {
-                            if i1.mnemonic == AsmMnemonic::CPY && i1.dasm_operand.starts_with('#') {
-                                // The result IS obvious
-                                match i2.mnemonic {
-                                    AsmMnemonic::BNE => {
-                                        if *r == i1.dasm_operand {
-                                            remove_both = true;
-                                        }
+                        if r.starts_with("#")
+                            && i1.mnemonic == AsmMnemonic::CPY
+                            && i1.dasm_operand.starts_with('#')
+                        {
+                            // The result IS obvious
+                            match i2.mnemonic {
+                                AsmMnemonic::BNE => {
+                                    if *r == i1.dasm_operand {
+                                        remove_both = true;
                                     }
-                                    AsmMnemonic::BEQ => {
-                                        if *r != i1.dasm_operand {
-                                            remove_both = true;
-                                        }
-                                    }
-                                    _ => (),
                                 }
+                                AsmMnemonic::BEQ => {
+                                    if *r != i1.dasm_operand {
+                                        remove_both = true;
+                                    }
+                                }
+                                _ => (),
                             }
                         }
                     }
@@ -509,15 +515,43 @@ impl AssemblyCode {
                 unreachable!()
             };
 
-            if !remove_second {
+            if !remove_second && !remove_both {
                 // Analyze the second instruction to check for a load
                 if let Some(AsmLine::Instruction(inst)) = &second {
                     match inst.mnemonic {
                         AsmMnemonic::LDA => {
                             if let Some(v) = &accumulator {
-                                if v.eq(&inst.dasm_operand) && flags == FlagsState::A {
-                                    // Remove this instruction
-                                    remove_second = !inst.protected;
+                                if v.eq(&inst.dasm_operand) {
+                                    if flags == FlagsState::A {
+                                        // Remove this instruction
+                                        remove_second = !inst.protected;
+                                    } else {
+                                        // OK. It's a little more complex. Let's check the
+                                        // following instructions.
+                                        // If we can find a CMP or a STA/LDA pair in the next 2
+                                        // instructions, it's OK, we can remove the instruction
+                                        if let Some(AsmLine::Instruction(i1)) = iter.peek() {
+                                            if i1.mnemonic == AsmMnemonic::CMP {
+                                                remove_second = !inst.protected;
+                                            } else if i1.mnemonic == AsmMnemonic::STA {
+                                                if let Some(line) = iter.peek() {
+                                                    if let AsmLine::Instruction(i2) = line {
+                                                        if i2.mnemonic == AsmMnemonic::LDA {
+                                                            remove_second = !inst.protected;
+                                                        }
+                                                    } else if let AsmLine::Dummy = line {
+                                                        if let Some(AsmLine::Instruction(i3)) =
+                                                            iter.peek()
+                                                        {
+                                                            if i3.mnemonic == AsmMnemonic::LDA {
+                                                                remove_second = !inst.protected;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             accumulator = Some(inst.dasm_operand.clone());
