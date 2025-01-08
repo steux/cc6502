@@ -1,5 +1,9 @@
+v1.0.29 (01/08/2025) :
+    - FIXME: #error is executed only on active code parts instead of ALWAYS yielding an error
+		- FIXME: #undef doesn't yield an error when not defined
+
 v1.0.28 (01/08/2025) :
-    - Fixed bug of signedness of neg operand
+    - FIXME: Fixed bug of signedness of neg operand
 
 v1.0.27 (12/06/2024) ;
     - Optimization: remove LDA followed by CMP oar STA + LDA

@@ -511,15 +511,9 @@ pub fn process<I: BufRead, O: Write>(
                         }
                     };
 
-                    if context.get_macro(expr).is_none() {
-                        return Err(Error::Syntax {
-                            filename: filename.clone(),
-                            included_in: included_in.clone(),
-                            line,
-                            msg: format!("Macro {} is not defined", expr),
-                        });
+                    if context.get_macro(expr).is_some() {
+                        context.undefine(expr);
                     }
-                    context.undefine(expr);
                 }
             } else if substr.starts_with("#define") {
                 if state == State::Active {
@@ -750,18 +744,20 @@ pub fn process<I: BufRead, O: Write>(
                             })?;
                         }
                         "#error" => {
-                            let expr = maybe_expr.ok_or_else(|| Error::Syntax {
-                                filename: filename.clone(),
-                                included_in: included_in.clone(),
-                                line,
-                                msg: "Expected error text after `#error`".to_string(),
-                            })?;
-                            return Err(Error::Compiler {
-                                filename: filename.clone(),
-                                included_in: included_in.clone(),
-                                line,
-                                msg: expr.to_string(),
-                            });
+                            if state == State::Active {
+                                let expr = maybe_expr.ok_or_else(|| Error::Syntax {
+                                    filename: filename.clone(),
+                                    included_in: included_in.clone(),
+                                    line,
+                                    msg: "Expected error text after `#error`".to_string(),
+                                })?;
+                                return Err(Error::Compiler {
+                                    filename: filename.clone(),
+                                    included_in: included_in.clone(),
+                                    line,
+                                    msg: expr.to_string(),
+                                });
+                            }
                         }
                         _ => {
                             return Err(Error::Syntax {
