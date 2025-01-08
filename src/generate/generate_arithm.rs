@@ -90,7 +90,32 @@ impl<'a> GeneratorState<'a> {
                     _ => {
                         if acc_in_use { self.sasm(PHA)?; }
                         self.asm(LDA, left, pos, high_byte)?;
-                        signed = false;
+                        signed = match right2 {
+                            ExprType::Immediate(l) => {
+                                *l < 0
+                            },
+                            ExprType::Absolute(variable, _, _) => {
+                                let v = self.compiler_state.get_variable(variable);
+                                v.signed
+                            },
+                            ExprType::AbsoluteX(s) | ExprType::AbsoluteY(s) => {
+                                let v = self.compiler_state.get_variable(s);
+                                v.signed
+                            },
+                            ExprType::Tmp(s) => {
+                                *s
+                            },
+                            ExprType::X => {
+                                false
+                            },
+                            ExprType::Y => {
+                                false
+                            },
+                            ExprType::A(s) => {
+                                *s
+                            },
+                            _ => { return Err(self.compiler_state.compiler_error("Arithmetics is partially implemented", pos)); },
+                        }
                     }
                 };
             },

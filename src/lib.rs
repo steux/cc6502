@@ -1903,4 +1903,26 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("LDX foo0"));
     }
+
+    #[test]
+    fn neg_test1() {
+        let args = sargs(1);
+        let input = "void main() { signed char v; if (-v >= 0) v = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("SEC\n\tLDA #0\n\tSBC main_1_v\n\tBMI .ifend1"));
+    }
+
+    #[test]
+    fn neg_test2() {
+        let args = sargs(1);
+        let input = "void main() { unsigned char v; if (-v >= 0) v = 0; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("SEC\n\tLDA #0\n\tSBC main_1_v\n\tBCC .ifend1"));
+    }
 }
