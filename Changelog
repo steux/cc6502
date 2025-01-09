@@ -1,6 +1,7 @@
 v1.0.29 (01/08/2025) :
     - FIXME: #error is executed only on active code parts instead of ALWAYS yielding an error
-		- FIXME: #undef doesn't yield an error when not defined
+    - FIXME: #undef doesn't yield an error when not defined
+    - Experimental: Optimization on (pointer >> 8) + offset expression
 
 v1.0.28 (01/08/2025) :
     - FIXME: Fixed bug of signedness of neg operand
@@ -11,8 +12,8 @@ v1.0.27 (12/06/2024) ;
 v1.0.26 (10/28/2024) ;
     - Experimental: Better handling of 16 bits complex expressions
     - FIXME: Suscripts were allowed on char and short variables (not just pointers)
-		- FIXME: Rust panic on assign to void
-		- Added sizeof support in constant expressions
+    - FIXME: Rust panic on assign to void
+    - Added sizeof support in constant expressions
 
 v1.0.25 (07/22/2024) :
     - FIXME: fixed do statement grammar (avoid collision with do_X variables)

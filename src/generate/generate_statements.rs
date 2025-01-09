@@ -490,8 +490,83 @@ impl<'a> GeneratorState<'a> {
                     }
                     ret
                 }
-                Operation::Add(false)
-                | Operation::Sub(false)
+                Operation::Add(false) => {
+                    if let Expr::Integer(l) = **rhs {
+                        // It's an addition to a constant.
+                        // Let's check the special left case of a shift of 8 bits
+                        if let Expr::BinOp {
+                            lhs: lhs2,
+                            op: Operation::Brs(false),
+                            rhs: rhs2,
+                        } = *lhs.clone()
+                        {
+                            if let Expr::Integer(8) = *rhs2 {
+                                if let Expr::Identifier(var, sub) = *lhs2 {
+                                    if let Expr::Nothing = *sub {
+                                        let v = self.compiler_state.get_variable(var.as_str());
+                                        if v.var_type == VariableType::CharPtr && v.var_const {
+                                            if self.acc_in_use {
+                                                self.sasm(PHA)?;
+                                            }
+                                            let signed = self.asm(
+                                                LDA,
+                                                &ExprType::Absolute(var, false, l * 256),
+                                                pos,
+                                                true,
+                                            )?;
+                                            self.flags = FlagsState::Unknown;
+                                            if self.acc_in_use {
+                                                self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
+                                                self.sasm(PLA)?;
+                                                if self.tmp_in_use {
+                                                    return Err(self.compiler_state.syntax_error(
+                                                        "Code too complex for the compiler",
+                                                        pos,
+                                                    ));
+                                                }
+                                                self.tmp_in_use = true;
+                                                return Ok(ExprType::Tmp(signed));
+                                            }
+                                            self.acc_in_use = true;
+                                            Ok(ExprType::A(signed))
+                                        } else {
+                                            let left =
+                                                self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                                            let right =
+                                                self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                                            self.generate_arithm(&left, op, &right, pos, high_byte)
+                                        }
+                                    } else {
+                                        let left =
+                                            self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                                        let right =
+                                            self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                                        self.generate_arithm(&left, op, &right, pos, high_byte)
+                                    }
+                                } else {
+                                    let left =
+                                        self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                                    let right =
+                                        self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                                    self.generate_arithm(&left, op, &right, pos, high_byte)
+                                }
+                            } else {
+                                let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                                let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                                self.generate_arithm(&left, op, &right, pos, high_byte)
+                            }
+                        } else {
+                            let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                            let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                            self.generate_arithm(&left, op, &right, pos, high_byte)
+                        }
+                    } else {
+                        let left = self.generate_expr(lhs, pos, high_byte, high_byte)?;
+                        let right = self.generate_expr(rhs, pos, high_byte, high_byte)?;
+                        self.generate_arithm(&left, op, &right, pos, high_byte)
+                    }
+                }
+                Operation::Sub(false)
                 | Operation::And(false)
                 | Operation::Or(false)
                 | Operation::Xor(false)

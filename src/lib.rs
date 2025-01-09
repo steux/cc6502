@@ -1925,4 +1925,15 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("SEC\n\tLDA #0\n\tSBC main_1_v\n\tBCC .ifend1"));
     }
+
+    #[test]
+    fn const_ptr_arithm_test() {
+        let args = sargs(1);
+        let input = "const char *ptr = \"\"; void main() { char x = (ptr >> 8) + 10; }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains("LDA #>(ptr+2560)\n\tSTA main_1_x"));
+    }
 }
