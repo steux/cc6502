@@ -344,7 +344,6 @@ impl<'a> GeneratorState<'a> {
                                 if v.var_type == VariableType::CharPtr && !eight_bits {
                                     if acc_in_use { self.sasm(PHA)?; }
                                     signed = self.asm(LDA, left, pos, true)?;
-                                    self.flags = FlagsState::Unknown;
                                     if acc_in_use {
                                         self.asm(STA, &ExprType::Tmp(signed), pos, false)?;
                                         self.sasm(PLA)?;
@@ -352,8 +351,10 @@ impl<'a> GeneratorState<'a> {
                                             return Err(self.compiler_state.syntax_error("Code too complex for the compiler", pos))
                                         }
                                         self.tmp_in_use = true;
+                                        self.flags = FlagsState::Unknown;
                                         return Ok(ExprType::Tmp(signed));
                                     } 
+                                    self.flags = FlagsState::A;
                                     self.acc_in_use = true;
                                     return Ok(ExprType::A(signed));
                                 }

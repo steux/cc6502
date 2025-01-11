@@ -1139,13 +1139,7 @@ fn flags_ok(flags: &FlagsState, expr_type: &ExprType) -> bool {
     match flags {
         FlagsState::X => *expr_type == ExprType::X,
         FlagsState::Y => *expr_type == ExprType::Y,
-        FlagsState::A => {
-            if let ExprType::A(_) = *expr_type {
-                true
-            } else {
-                false
-            }
-        }
+        FlagsState::A => matches!(*expr_type, ExprType::A(_)),
         FlagsState::AbsoluteX(s) => *expr_type == ExprType::AbsoluteX(s.clone()),
         FlagsState::AbsoluteY(s) => *expr_type == ExprType::AbsoluteY(s.clone()),
         FlagsState::Absolute(var, eight_bits, offset) => {
