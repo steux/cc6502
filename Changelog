@@ -1,3 +1,6 @@
+v1.0.30 (05/05/2025) :
+	  - Added verbosity CLI option
+
 v1.0.29 (01/08/2025) :
     - FIXME: #error is executed only on active code parts instead of ALWAYS yielding an error
     - FIXME: #undef doesn't yield an error when not defined

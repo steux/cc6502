@@ -89,9 +89,13 @@ pub struct Args {
     #[arg(short='O', default_value="1", value_parser=clap::value_parser!(u8).range(0..=3))]
     pub optimization_level: u8,
 
-    /// Verbosity
+    /// Activate verbose output
     #[arg(short, long, default_value = "false")]
     pub verbose: bool,
+
+    /// Set vertbosity level
+    #[arg(short = 'V', long, default_value = "0")]
+    pub verbosity: u8,
 
     /// Include directories
     #[arg(short = 'I')]
@@ -146,6 +150,7 @@ mod tests {
             defines: Vec::new(),
             insert_code: false,
             verbose: false,
+            verbosity: 0,
             optimization_level,
             signed_chars: false,
             unsigned_chars: true,
