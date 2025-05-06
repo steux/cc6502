@@ -69,7 +69,7 @@ parameter = { local_var_type ~ pointer* ~ id_name ~ array_spec? }
 inline = { "inline" }
 interrupt = { "interrupt" }
 bank = ${ "bank" ~ bank_number }
-bank_number = { ASCII_DIGIT }
+bank_number = { ASCII_DIGIT+ }
 
 included_assembler = ${ "=== ASSEMBLER BEGIN ===" ~ assembler_code ~ "==== ASSEMBLER END ====" }
 assembler_code = ${(!"==== ASSEMBLER END ===="~ ANY)*} 
