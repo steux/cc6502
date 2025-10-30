@@ -57,6 +57,7 @@ pub enum VariableMemory {
     Display,
     Frequency,
     Ramchip,
+    Ramplus,
     MemoryOnChip(u32),
     Dummy,
 }
@@ -1149,6 +1150,7 @@ impl<'a> CompilerState<'a> {
                             Rule::display => memory = VariableMemory::Display,
                             Rule::frequency => memory = VariableMemory::Frequency,
                             Rule::ramchip => memory = VariableMemory::Ramchip,
+                            Rule::ramplus => memory = VariableMemory::Ramplus,
                             Rule::var_sign => {
                                 signed = p.as_str().eq("signed");
                                 signedness_specified = true;
