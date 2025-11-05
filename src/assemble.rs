@@ -278,7 +278,7 @@ impl AssemblyCode {
             let mut remove_second = false;
             let mut swap_both = false;
 
-            // Remove JMP to the folliwing label
+            // Remove JMP to the following label
             if let Some(AsmLine::Instruction(i1)) = &first {
                 if let Some(AsmLine::Label(l)) = &second {
                     if i1.mnemonic == AsmMnemonic::JMP && &i1.dasm_operand == l && !i1.protected {
@@ -453,12 +453,12 @@ impl AssemblyCode {
                             // The result IS obvious
                             match i2.mnemonic {
                                 AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
+                                    if *r == i1.dasm_operand && !i2.protected{
                                         remove_both = true;
                                     }
                                 }
                                 AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
+                                    if *r != i1.dasm_operand && !i2.protected {
                                         remove_both = true;
                                     }
                                 }
@@ -474,12 +474,12 @@ impl AssemblyCode {
                             // The result IS obvious
                             match i2.mnemonic {
                                 AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
+                                    if *r == i1.dasm_operand && !i2.protected {
                                         remove_both = true;
                                     }
                                 }
                                 AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
+                                    if *r != i1.dasm_operand && !i2.protected {
                                         remove_both = true;
                                     }
                                 }
@@ -495,12 +495,12 @@ impl AssemblyCode {
                             // The result IS obvious
                             match i2.mnemonic {
                                 AsmMnemonic::BNE => {
-                                    if *r == i1.dasm_operand {
+                                    if *r == i1.dasm_operand && !i2.protected {
                                         remove_both = true;
                                     }
                                 }
                                 AsmMnemonic::BEQ => {
-                                    if *r != i1.dasm_operand {
+                                    if *r != i1.dasm_operand && !i2.protected {
                                         remove_both = true;
                                     }
                                 }

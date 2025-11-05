@@ -1,5 +1,6 @@
-v1.0.31 (10/30/2025) :
-	- added ramplus keyword for 7800+ support
+v1.0.31 (11/05/2025) :
+    - FIXME: fixed big bug with <= in for loop conditions
+    - Added ramplus keyword for 7800+ support
     - FIXME: allowed bank numbering >9
 
 v1.0.30 (05/05/2025) :

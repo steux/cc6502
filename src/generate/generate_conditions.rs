@@ -181,7 +181,9 @@ impl<'a, 'b> GeneratorState<'a> {
             Operation::Gt => {
                 self.local_label_counter_if += 1;
                 let label_here = format!(".ifhere{}", self.local_label_counter_if);
+                self.protected = true;
                 self.asm(BEQ, &ExprType::Label(label_here.clone()), 0, false)?;
+                self.protected = false;
                 if signed {
                     self.asm(BPL, &ExprType::Label(label.into()), 0, false)?;
                 } else {

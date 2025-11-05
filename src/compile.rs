@@ -233,7 +233,7 @@ impl<'a> CompilerState<'a> {
         self.variables.get(name).unwrap()
     }
 
-    pub fn sorted_functions(&self) -> Vec<(&String, &Function)> {
+    pub fn sorted_functions(&self) -> Vec<(&String, &Function<'a>)> {
         let mut v: Vec<(&String, &Function)> = self.functions.iter().collect();
         v.sort_by(|a, b| a.1.order.cmp(&b.1.order));
         v
