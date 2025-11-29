@@ -1952,4 +1952,15 @@ void main() { fn2(); fn3(); }
         print!("{:?}", result);
         assert!(result.contains("LDA #>(ptr+-2560)\n\tSTA main_1_x"));
     }
+    
+    #[test]
+    fn pointers_array_test() {
+        let args = sargs(1);
+        let input = "const char v[1] = {0}; const char *ptrs[2] = {v + 10, v - 10}; void main() { }";
+        let mut output = Vec::new();
+        compile(input.as_bytes(), &mut output, &args, simple_build).unwrap();
+        let result = str::from_utf8(&output).unwrap();
+        print!("{:?}", result);
+        assert!(result.contains(".byte <(v + 10), <(v + -10), >(v + 10), >(v + -10)"));
+    }
 }

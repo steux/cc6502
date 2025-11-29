@@ -60,7 +60,7 @@ array_def = { "{" ~ ((calc_expr | var_ptr | quoted_string) ~ ",")* ~ (calc_expr 
 var_ptr = { (id_name | deref_id_name) ~ ptr_offset? ~ (ptr_hi | ptr_low)? }
 ptr_hi = { ">>" ~ calc_expr }
 ptr_low = { "&" ~ calc_expr }
-ptr_offset = { "+" ~ int }
+ptr_offset = { ("+"|"-") ~ int }
 pointer = { "*" }
 
 func_vec_decl = { "void" ~ "(*" ~ id_name ~ array_spec ~ ")()" ~ "=" ~ var_def }

@@ -65,8 +65,8 @@ pub enum VariableMemory {
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {
     Int(i32),
-    LowPtr((String, usize)),
-    HiPtr((String, usize)),
+    LowPtr((String, i32)),
+    HiPtr((String, i32)),
 }
 
 #[derive(Debug, PartialEq)]
@@ -74,7 +74,7 @@ pub enum VariableDefinition {
     None,
     Value(VariableValue),
     Array(Vec<VariableValue>),
-    ArrayOfPointers(Vec<(String, usize)>),
+    ArrayOfPointers(Vec<(String, i32)>),
 }
 
 #[derive(Debug)]
@@ -1338,6 +1338,7 @@ impl<'a> CompilerState<'a> {
                                                         }
                                                     }
                                                     Rule::ptr_offset => {
+                                                        let sign = if x.as_str().starts_with("-") { -1 } else { 1 };
                                                         let offset = parse_int(
                                                             x.into_inner()
                                                                 .next()
@@ -1345,14 +1346,13 @@ impl<'a> CompilerState<'a> {
                                                                 .into_inner()
                                                                 .next()
                                                                 .unwrap(),
-                                                        )
-                                                            as usize;
+                                                        );
                                                         match pxx.next() {
                                                         Some(x) => match x.as_rule() {
                                                             Rule::ptr_low => {
                                                                 let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
                                                                 if val == 255 {
-                                                                    VariableValue::LowPtr((id_name, offset))
+                                                                    VariableValue::LowPtr((id_name, sign * offset))
                                                                 } else {
                                                                     return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                                 }
@@ -1360,14 +1360,14 @@ impl<'a> CompilerState<'a> {
                                                             Rule::ptr_hi => {
                                                                 let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
                                                                 if val == 8 {
-                                                                    VariableValue::HiPtr((id_name, offset))
+                                                                    VariableValue::HiPtr((id_name, sign * offset))
                                                                 } else {
                                                                     return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                                 }
                                                             },
                                                             _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                         },
-                                                        None => VariableValue::LowPtr((id_name, offset)),
+                                                        None => VariableValue::LowPtr((id_name, sign * offset)),
                                                     }
                                                     }
                                                     _ => {
@@ -1447,13 +1447,14 @@ impl<'a> CompilerState<'a> {
                                                                     }
                                                                 },
                                                                 Rule::ptr_offset => {
-                                                                    let offset = parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap()) as usize;
+                                                                    let sign = if x.as_str().starts_with("-") { -1 } else { 1 };
+                                                                    let offset = parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap());
                                                                     match pxxx.next() {
                                                                         Some(x) => match x.as_rule() {
                                                                             Rule::ptr_low => {
                                                                                 let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
                                                                                 if val == 255 {
-                                                                                    v.push(VariableValue::LowPtr((id_name, offset)))
+                                                                                    v.push(VariableValue::LowPtr((id_name, sign * offset)))
                                                                                 } else {
                                                                                     return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                                                 }
@@ -1461,14 +1462,14 @@ impl<'a> CompilerState<'a> {
                                                                             Rule::ptr_hi => {
                                                                                 let val = self.parse_calc(x.into_inner().next().unwrap().into_inner())?;
                                                                                 if val == 8 {
-                                                                                    v.push(VariableValue::HiPtr((id_name, offset)))
+                                                                                    v.push(VariableValue::HiPtr((id_name, sign * offset)))
                                                                                 } else {
                                                                                     return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                                                 }
                                                                             },
                                                                             _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
                                                                         },
-                                                                        None => v.push(VariableValue::LowPtr((id_name, offset))),
+                                                                        None => v.push(VariableValue::LowPtr((id_name, sign * offset))),
                                                                     }
                                                                 },
                                                                 _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", id_name), start))
@@ -1500,7 +1501,7 @@ impl<'a> CompilerState<'a> {
                                                 match pxx.as_rule() {
                                                     Rule::calc_expr => v.push((
                                                         "__address__".into(),
-                                                        self.parse_calc(pxx.into_inner())? as usize,
+                                                        self.parse_calc(pxx.into_inner())?
                                                     )),
                                                     Rule::var_ptr => {
                                                         let mut pxxx = pxx.into_inner();
@@ -1512,7 +1513,8 @@ impl<'a> CompilerState<'a> {
                                                         let offset = match pxxx.next() {
                                                             Some(x) => match x.as_rule() {
                                                                 Rule::ptr_offset => {
-                                                                    parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap()) as usize
+                                                                    let sign = if x.as_str().starts_with("-") { -1 } else { 1 };
+                                                                    sign * parse_int(x.into_inner().next().unwrap().into_inner().next().unwrap())
                                                                 },
                                                                 _ => return Err(self.syntax_error(&format!("Incorrect suffix to reference {}", s), start))
                                                             },

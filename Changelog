@@ -1,3 +1,6 @@
+v1.0.32 (11/29/2025) :
+    - Added support for negative pointer offsets in static definitions
+
 v1.0.31 (11/05/2025) :
     - FIXME: fixed big bug with <= in for loop conditions
     - Added ramplus keyword for 7800+ support
