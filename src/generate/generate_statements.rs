@@ -207,6 +207,7 @@ impl<'a> GeneratorState<'a> {
                                 } else if f.bank == self.current_bank
                                     || self.bankswitching_scheme == "3EP"
                                     || (self.bankswitching_scheme.starts_with("SuperGame")
+                                    || cfg!(feature = "atarilynx")
                                         && (f.bank == 0 || f.bank == fixed_bank))
                                 {
                                     self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
@@ -229,7 +230,8 @@ impl<'a> GeneratorState<'a> {
                                     } else {
                                         return Err(self.compiler_state.syntax_error("Banked code can only be called from bank 0 or same bank", pos));
                                     }
-                                } else if self.current_bank == 0 || self.current_bank == fixed_bank
+                                }        
+                                else if self.current_bank == 0 || self.current_bank == fixed_bank || cfg!(feature = "atarilynx")
                                 {
                                     // Generate bankswitching call
                                     if self.bankswitching_scheme.starts_with("SuperGame") {
@@ -247,9 +249,17 @@ impl<'a> GeneratorState<'a> {
                                         )?;
                                         self.asm(JSR, &ExprType::Label(var.clone()), pos, false)?;
                                     } else {
+                                        #[cfg(not(feature = "atarilynx"))]
                                         self.asm(
                                             JSR,
                                             &ExprType::Label(format!("Call{}", *var)),
+                                            pos,
+                                            false,
+                                        )?;
+                                        #[cfg(feature = "atarilynx")]
+                                        self.asm(
+                                            JSR,
+                                            &ExprType::Label(format!("{}", *var)),
                                             pos,
                                             false,
                                         )?;

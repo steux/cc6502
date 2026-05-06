@@ -376,6 +376,21 @@ impl<'a> GeneratorState<'a> {
                     _ => {
                         let mut acc_in_use = self.acc_in_use;
                         let signed;
+
+                        #[cfg(feature = "65C02")]
+                        if right == &ExprType::Immediate(0) {
+                            match left {
+                                ExprType::Absolute(_, _, _)
+                                | ExprType::AbsoluteX(_) => {
+                                    self.asm(STZ, left, pos, high_byte)?;
+                                    self.flags = FlagsState::Unknown;
+                                    self.carry_flag_ok = false;
+                                    return Ok(ExprType::Nothing);
+                                }
+                                _ => (),
+                            };
+                        }
+
                         match right {
                             ExprType::Absolute(_, _, _)
                             | ExprType::AbsoluteX(_)

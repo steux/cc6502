@@ -68,6 +68,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
     // Try to figure out what is the bankswitching method
 
     // Let's identitfy superchip
+    #[cfg(not(feature = "atarilynx"))]
     for v in compiler_state.sorted_variables().iter() {
         if !v.1.var_const && v.1.memory == VariableMemory::Superchip && v.1.def == VariableDefinition::None {
             superchip = true;
@@ -289,6 +290,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
         level += 1;
     }
 
+    #[cfg(not(feature = "atarilynx"))]
     if superchip {
         gstate.write("\n\tSEG.U SUPERVARS\n\tORG $1000\n\tRORG $1000\n")?;
         // Superchip variables
@@ -317,6 +319,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
     }
 
     // Generate RAM for 3E bankswitching scheme
+    #[cfg(not(feature = "atarilynx"))]
     if bankswitching_scheme == "3E" {
         for bank in 1..=512 { // Max 512ko
             let mut first = true;
@@ -350,6 +353,7 @@ pub fn simple_build(compiler_state: &CompilerState, writer: &mut dyn Write, args
     }
 
     // Generate RAM for 3E+ bankswitching scheme
+    #[cfg(not(feature = "atarilynx"))]
     if bankswitching_scheme == "3EP" {
         for bank in 0..64 { // Max 32ko
             let mut first = true;
@@ -491,98 +495,101 @@ Powerup
         }
 
         // Generate ROM tables
-        gstate.write("\n; Tables in ROM\n")?;
-        for v in compiler_state.sorted_variables().iter() {
-            if let VariableMemory::ROM(rom_bank) = v.1.memory {
-                if rom_bank == bank {
-                    match &v.1.def {
-                        VariableDefinition::Array(arr) => {
-                            if v.1.alignment != 1 {
-                                gstate.write(&format!("\n\talign {}\n", v.1.alignment))?;
-                            }
-                            gstate.write(v.0)?;
-                            let mut counter = 0;
-                            for vx in arr {
-                                match vx {
-                                    VariableValue::Int(i) => {
+        #[cfg(not(feature = "atarilynx"))]
+        {
+            gstate.write("\n; Tables in ROM\n")?;
+            for v in compiler_state.sorted_variables().iter() {
+                if let VariableMemory::ROM(rom_bank) = v.1.memory {
+                    if rom_bank == bank {
+                        match &v.1.def {
+                            VariableDefinition::Array(arr) => {
+                                if v.1.alignment != 1 {
+                                    gstate.write(&format!("\n\talign {}\n", v.1.alignment))?;
+                                }
+                                gstate.write(v.0)?;
+                                let mut counter = 0;
+                                for vx in arr {
+                                    match vx {
+                                        VariableValue::Int(i) => {
+                                            if counter == 0 {
+                                                gstate.write("\n\thex ")?;
+                                            }
+                                            counter += 1;
+                                            if counter == 16 { counter = 0; }
+                                            gstate.write(&format!("{:02x}", i & 0xff))
+                                        },
+                                        VariableValue::LowPtr((s, offset)) => {
+                                            counter = 0;
+                                            if *offset != 0 {
+                                                gstate.write(&format!("\n\t.byte <({} + {})", s, offset))
+                                            } else {
+                                                gstate.write(&format!("\n\t.byte <{}", s))
+                                            }
+                                        },
+                                        VariableValue::HiPtr((s, offset)) => {
+                                            counter = 0;
+                                            if *offset != 0 {
+                                                gstate.write(&format!("\n\t.byte >({} + {})", s, offset))
+                                            } else {
+                                                gstate.write(&format!("\n\t.byte >{}", s))
+                                            }
+                                        },
+                                    }?;
+                                } 
+                                if v.1.var_type == VariableType::ShortPtr {
+                                    for vx in arr {
                                         if counter == 0 {
                                             gstate.write("\n\thex ")?;
                                         }
                                         counter += 1;
                                         if counter == 16 { counter = 0; }
-                                        gstate.write(&format!("{:02x}", i & 0xff))
-                                    },
-                                    VariableValue::LowPtr((s, offset)) => {
-                                        counter = 0;
-                                        if *offset != 0 {
-                                            gstate.write(&format!("\n\t.byte <({} + {})", s, offset))
-                                        } else {
-                                            gstate.write(&format!("\n\t.byte <{}", s))
+                                        if let VariableValue::Int(i) = vx {
+                                            gstate.write(&format!("{:02x}", (i >> 8) & 0xff))?;
                                         }
-                                    },
-                                    VariableValue::HiPtr((s, offset)) => {
-                                        counter = 0;
-                                        if *offset != 0 {
-                                            gstate.write(&format!("\n\t.byte >({} + {})", s, offset))
-                                        } else {
-                                            gstate.write(&format!("\n\t.byte >{}", s))
-                                        }
-                                    },
-                                }?;
-                            } 
-                            if v.1.var_type == VariableType::ShortPtr {
-                                for vx in arr {
-                                    if counter == 0 {
-                                        gstate.write("\n\thex ")?;
+                                    } 
+                                }
+                                gstate.write("\n")?;
+                            },
+                            VariableDefinition::ArrayOfPointers(arr) => {
+                                if v.1.alignment != 1 {
+                                    gstate.write(&format!("\n\talign {}\n", v.1.alignment))?;
+                                }
+                                gstate.write(v.0)?;
+
+                                let mut counter = 0;
+                                for i in arr {
+                                    if counter % 8 == 0 {
+                                        gstate.write("\n\t.byte ")?;
                                     }
                                     counter += 1;
-                                    if counter == 16 { counter = 0; }
-                                    if let VariableValue::Int(i) = vx {
-                                        gstate.write(&format!("{:02x}", (i >> 8) & 0xff))?;
+                                    if i.1 != 0 {
+                                        gstate.write(&format!("<({} + {})", i.0, i.1))?;
+                                    } else {
+                                        gstate.write(&format!("<{}", i.0))?;
                                     }
+                                    if counter % 8 != 0 {
+                                        gstate.write(", ")?;
+                                    } 
                                 } 
-                            }
-                            gstate.write("\n")?;
-                        },
-                        VariableDefinition::ArrayOfPointers(arr) => {
-                            if v.1.alignment != 1 {
-                                gstate.write(&format!("\n\talign {}\n", v.1.alignment))?;
-                            }
-                            gstate.write(v.0)?;
-
-                            let mut counter = 0;
-                            for i in arr {
-                                if counter % 8 == 0 {
-                                    gstate.write("\n\t.byte ")?;
-                                }
-                                counter += 1;
-                                if i.1 != 0 {
-                                    gstate.write(&format!("<({} + {})", i.0, i.1))?;
-                                } else {
-                                    gstate.write(&format!("<{}", i.0))?;
-                                }
-                                if counter % 8 != 0 {
-                                    gstate.write(", ")?;
+                                for i in arr {
+                                    if counter % 8 == 0 {
+                                        gstate.write("\n\t.byte ")?;
+                                    }
+                                    counter += 1;
+                                    if i.1 != 0 {
+                                        gstate.write(&format!(">({} + {})", i.0, i.1))?;
+                                    } else {
+                                        gstate.write(&format!(">{}", i.0))?;
+                                    }
+                                    if counter % 8 != 0 && counter < 2 * arr.len() {
+                                        gstate.write(", ")?;
+                                    } 
                                 } 
-                            } 
-                            for i in arr {
-                                if counter % 8 == 0 {
-                                    gstate.write("\n\t.byte ")?;
-                                }
-                                counter += 1;
-                                if i.1 != 0 {
-                                    gstate.write(&format!(">({} + {})", i.0, i.1))?;
-                                } else {
-                                    gstate.write(&format!(">{}", i.0))?;
-                                }
-                                if counter % 8 != 0 && counter < 2 * arr.len() {
-                                    gstate.write(", ")?;
-                                } 
-                            } 
-                            gstate.write("\n")?;
-                        },
-                        _ => ()
-                    };
+                                gstate.write("\n")?;
+                            },
+                            _ => ()
+                        };
+                    }
                 }
             }
         }
@@ -660,6 +667,7 @@ Call{}
 
         let starting_code = if maxbank > 0 && bank != 0 { "Start" } else { "Powerup" };
 
+        #[cfg(not(feature = "atarilynx"))]
         if b == maxbank && compiler_state.variables.get("PLUSROM_API").is_some() {
             let v = compiler_state.get_variable("PLUSROM_API");
             let offset = match v.memory {
@@ -713,6 +721,7 @@ Call{}
         }
     }
 
+    #[cfg(not(feature = "atarilynx"))]
     if bankswitching_scheme == "DPC" {
         gstate.write("
             SEG DISPLAY
@@ -752,6 +761,7 @@ Call{}
             ")?;
     }
  
+    #[cfg(not(feature = "atarilynx"))]
     if bankswitching_scheme == "DPC+" {
         gstate.write("
             SEG DISPLAY

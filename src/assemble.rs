@@ -32,6 +32,8 @@ pub enum AsmMnemonic {
     STA,
     STX,
     STY,
+    #[cfg(feature = "65C02")]
+    STZ,
     TAX,
     TAY,
     TXA,
@@ -63,6 +65,8 @@ pub enum AsmMnemonic {
     DEX,
     DEY,
     JMP,
+    #[cfg(feature = "65C02")]
+    BRA,
     JSR,
     RTS,
     RTI,
@@ -236,15 +240,114 @@ impl AssemblyCode {
         Ok(s)
     }
 
-    pub fn optimize(&mut self) -> u32 {
+    pub(crate) fn distance(&self, inst: &AsmInstruction, position: usize) -> i32 {
+        let mut bytes_above = 0;
+        let mut bytes_below = 0;
+        let mut index_above = position;
+        let mut index_below = position + 1;
+        let mut reached_above = false;
+        let above;
+        let mut notfound = 0;
+        loop {
+            if !reached_above {
+                match &self.code[index_above] {
+                    AsmLine::Label(l) => {
+                        debug!("Iter above: {:?}", l);
+                        if *l == inst.dasm_operand {
+                            above = true;
+                            break;
+                        }
+                    }
+                    AsmLine::Inline(_, s) => {
+                        bytes_above += s;
+                    }
+                    AsmLine::Instruction(k) => {
+                        debug!("Iter above: {:?}", k);
+                        bytes_above += k.nb_bytes;
+                    }
+                    _ => (),
+                }
+            }
+            match self.code.get(index_below) {
+                Some(AsmLine::Label(l)) => {
+                    debug!("Iter below: {:?}", l);
+                    if *l == inst.dasm_operand {
+                        above = false;
+                        break;
+                    }
+                }
+                Some(AsmLine::Inline(_, s)) => {
+                    bytes_below += s;
+                }
+                Some(AsmLine::Instruction(k)) => {
+                    debug!("Iter below: {:?}", k);
+                    bytes_below += k.nb_bytes;
+                }
+                None => notfound |= 2,
+                _ => (),
+            }
+            if index_above == 0 {
+                reached_above = true;
+                notfound |= 1;
+            } else {
+                index_above -= 1;
+            }
+            index_below += 1;
+            if notfound == 3 {
+                error!("Label {} not found", inst.dasm_operand);
+                unreachable!()
+            };
+        }
+        // Ok, now we have the distance in bytes
+        if above { bytes_above as i32 } else { -(bytes_below as i32) }
+    }
+
+
+    #[cfg(feature = "65C02")]
+    fn optimize_jmp_bra(&mut self) {
+        let to_replace: Vec<usize> = self
+            .code
+            .iter()
+            .enumerate()
+            .filter_map(|(pos, line)| {
+                if let AsmLine::Instruction(jmp) = line {
+                    if jmp.mnemonic == AsmMnemonic::JMP
+                        && !jmp.protected
+                        && (-127..=128).contains(&self.distance(jmp, pos))
+                    {
+                        Some(pos)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for pos in to_replace {
+            if let AsmLine::Instruction(jmp) = &self.code[pos] {
+                self.code[pos] = AsmLine::Instruction(AsmInstruction {
+                    mnemonic: AsmMnemonic::BRA,
+                    dasm_operand: jmp.dasm_operand.clone(),
+                    cycles: 3,
+                    cycles_alt: Some(4),
+                    nb_bytes: 2,
+                    protected: false,
+                });
+            }
+        }
+    }
+
+    fn general_6502_optimizations(&mut self) -> u32 {
         let mut removed_instructions = 0u32;
         let mut accumulator = None;
         let mut x_register = None;
         let mut y_register = None;
+        let mut flags = FlagsState::Unknown;
         let mut iter = itertools::multipeek(self.code.iter_mut());
         let mut first = iter.next();
-        let mut flags = FlagsState::Unknown;
-
+        
         loop {
             match &first {
                 None => return removed_instructions,
@@ -785,6 +888,15 @@ impl AssemblyCode {
         }
     }
 
+    pub fn optimize(&mut self) -> u32 {
+        let removed_instructions = self.general_6502_optimizations();
+
+        #[cfg(feature = "65C02")]
+        self.optimize_jmp_bra();
+
+        removed_instructions
+    }
+
     pub fn check_branches(&mut self) -> u32 {
         // Loop until there is no problematic branch instruction
         let mut restart = true;
@@ -810,69 +922,10 @@ impl AssemblyCode {
                         | AsmMnemonic::BPL
                         | AsmMnemonic::BCS
                         | AsmMnemonic::BCC => {
-                            // Ok, let's try to find the label above and under and try to count the bytes
-                            let mut bytes_above = 0;
-                            let mut bytes_below = 0;
-                            let mut index_above = position;
-                            let mut index_below = position + 1;
-                            let mut reached_above = false;
-                            let above;
-                            let mut notfound = 0;
-                            loop {
-                                if !reached_above {
-                                    match &self.code[index_above] {
-                                        AsmLine::Label(l) => {
-                                            debug!("Iter above: {:?}", l);
-                                            if *l == inst.dasm_operand {
-                                                above = true;
-                                                break;
-                                            }
-                                        }
-                                        AsmLine::Inline(_, s) => {
-                                            bytes_above += s;
-                                        }
-                                        AsmLine::Instruction(k) => {
-                                            debug!("Iter above: {:?}", k);
-                                            bytes_above += k.nb_bytes;
-                                        }
-                                        _ => (),
-                                    }
-                                }
-                                match self.code.get(index_below) {
-                                    Some(AsmLine::Label(l)) => {
-                                        debug!("Iter below: {:?}", l);
-                                        if *l == inst.dasm_operand {
-                                            above = false;
-                                            break;
-                                        }
-                                    }
-                                    Some(AsmLine::Inline(_, s)) => {
-                                        bytes_below += s;
-                                    }
-                                    Some(AsmLine::Instruction(k)) => {
-                                        debug!("Iter below: {:?}", k);
-                                        bytes_below += k.nb_bytes;
-                                    }
-                                    None => notfound |= 2,
-                                    _ => (),
-                                }
-                                if index_above == 0 {
-                                    reached_above = true;
-                                    notfound |= 1;
-                                } else {
-                                    index_above -= 1;
-                                }
-                                index_below += 1;
-                                if notfound == 3 {
-                                    error!("Label {} not found", inst.dasm_operand);
-                                    unreachable!()
-                                };
-                            }
-                            // Ok, now we have the distance in bytes
-                            let distance = if above { bytes_above } else { bytes_below };
+                            let distance = self.distance(inst, position);
                             //error!("distance = {:?}", distance);
                             //if above {unreachable!();}
-                            if distance > 127 {
+                            if !(-127..=128).contains(&distance) {
                                 // OK. We have a problem here
                                 // This branch should be changed for a jump
                                 repair = true;
